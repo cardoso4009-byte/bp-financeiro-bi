@@ -12,3 +12,6 @@ Dashboard de Controladoria e Finanças Corporativas.
 - Checks de integridade
 
 Os dados atuais são demonstrativos e reproduzem os números utilizados na modelagem inicial do projeto. A próxima etapa é separar dados, regras de negócio e apresentação para receber dados reais de empresas.
+
+## Deploy
+O projeto está conectado ao Vercel para implantação automática a partir da branch `main`.
