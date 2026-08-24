@@ -49,14 +49,14 @@ export default function Gestao() {
       <Diagnosis good={Math.abs(actualOpex) <= Math.abs(budgetOpex)} title="OPEX" text={`Desvio de ${pct(Math.abs(opexVar) / Math.abs(budgetOpex))} contra o orçamento. ${Math.abs(actualOpex) > Math.abs(budgetOpex) ? 'Atenção à pressão de despesas.' : 'Despesa sob controle.'}`}/>
       <Diagnosis good={ebitdaVar >= 0} title="EBITDA" text={`Resultado ${brl(ebitdaVar)} versus orçamento. ${ebitdaVar < 0 ? 'Investigar margem e estrutura de custos.' : 'Conversão operacional favorável.'}`}/>
     </section><section className="panel"><div className="panel-title"><h2>Leitura do caixa</h2><span>2026</span></div>
-      <div className="note">A geração operacional de caixa deve ser analisada em conjunto com o lucro. O próximo módulo será Capital de Giro, conectando contas a receber, estoques e fornecedores à geração de caixa.</div>
+      <div className="note">A geração operacional de caixa deve ser analisada em conjunto com o lucro. O módulo de <a href="/capital-giro" style={{ fontWeight: 700 }}>Capital de Giro</a> conecta contas a receber, estoques e fornecedores à geração de caixa.</div>
       <div className="check"><i className="ok">✓</i><div><b>Caixa operacional positivo</b><small>{brl(sum(monthlyData.map(m => m.caixaOperacional)))}</small></div></div>
       <div className="check"><i className="ok">✓</i><div><b>Modelo integrado</b><small>DRE • BP • DFC • DMPL</small></div></div>
     </section></div>
 
     <section className="panel"><div className="panel-title"><h2>Próximas análises</h2><span>Roadmap</span></div><div className="rows">
-      <div className="row"><span>01 • Capital de Giro</span><b>Próximo</b></div>
-      <div className="row"><span>02 • Fluxo de Caixa Projetado</span><b>Planejado</b></div>
+      <div className="row"><span>01 • <a href="/capital-giro" style={{ fontWeight: 700 }}>Capital de Giro</a></span><b>Disponível</b></div>
+      <div className="row"><span>02 • Fluxo de Caixa Projetado</span><b>Próximo</b></div>
       <div className="row"><span>03 • Base de lançamentos financeiros</span><b>Planejado</b></div>
       <div className="row"><span>04 • Diagnóstico e recomendações</span><b>Planejado</b></div>
     </div></section>
