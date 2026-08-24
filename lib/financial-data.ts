@@ -61,8 +61,8 @@ export const financialData: FinancialData = {
   passivoCirculante: 250_000,
   passivoNaoCirculante: 170_000,
   passivoTotal: 420_000,
-  plInicial: 230_000,
-  dividendos: 0,
+  plInicial: 250_000,
+  dividendos: -20_000,
   plFinal: 350_000,
 }
 
