@@ -4,7 +4,6 @@ import { workingCapitalData, workingCapitalTotals as t } from '@/lib/capital-gir
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 const pct = (n: number) => `${(n * 100).toFixed(1).replace('.', ',')}%`
-const avg = (values: number[]) => values.reduce((a, b) => a + b, 0) / values.length
 
 export default function CapitalGiro() {
   const maxNcg = Math.max(...workingCapitalData.map(m => m.ncg))
