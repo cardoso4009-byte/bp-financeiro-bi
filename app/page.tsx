@@ -7,12 +7,13 @@ import { monthlyData } from '@/lib/monthly-data'
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 const pct = (n: number) => `${(n * 100).toFixed(1).replace('.', ',')}%`
 const nav = [['Visão Executiva','exec'],['DRE Gerencial','dre'],['Balanço','bp'],['DFC','dfc'],['DMPL','dmpl'],['Indicadores','ind']] as const
+const modules = [['Gestão Financeira','/gestao'],['Capital de Giro','/capital-giro'],['Fluxo de Caixa','/fluxo-caixa'],['Lançamentos','/lancamentos']] as const
 
 export default function Home() {
   const [page, setPage] = useState('exec')
   const item = nav.find(x => x[1] === page)?.[0]
   return <main className="shell">
-    <aside className="side"><div className="brand"><b>BP</b><div><strong>BP Financeiro</strong><span>Controladoria & BI</span></div></div><div className="company"><small>EMPRESA DEMONSTRATIVA</small><strong>Grupo Exemplo</strong><span>2026 • Modelo integrado</span></div><nav>{nav.map(([label,id]) => <button key={id} className={page===id?'active':''} onClick={()=>setPage(id)}>{label}</button>)}</nav><footer>V1.2 • Projeto Consultoria Financeira</footer></aside>
+    <aside className="side"><div className="brand"><b>BP</b><div><strong>BP Financeiro</strong><span>Controladoria & BI</span></div></div><div className="company"><small>EMPRESA DEMONSTRATIVA</small><strong>Grupo Exemplo</strong><span>2026 • Modelo integrado</span></div><nav>{nav.map(([label,id]) => <button key={id} className={page===id?'active':''} onClick={()=>setPage(id)}>{label}</button>)}<div className="nav-divider">MÓDULOS GERENCIAIS</div>{modules.map(([label,url])=><a className="nav-link" key={url} href={url}>{label}</a>)}</nav><footer>V1.3 • Projeto Consultoria Financeira</footer></aside>
     <section className="content"><header><div><small>CONTROLADORIA FINANCEIRA</small><h1>{item}</h1><p>Demonstrações integradas • Regime de competência</p></div><div className="period">Jan–Dez 2026</div></header>
       {page==='exec' && <Executive/>}{page==='dre' && <DRE/>}{page==='bp' && <BP/>}{page==='dfc' && <DFC/>}{page==='dmpl' && <DMPL/>}{page==='ind' && <Indicators/>}
     </section>
