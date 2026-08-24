@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, type ReactNode } from 'react'
 import { checks, financialData as d, indicators } from '@/lib/financial-data'
 import { monthlyData } from '@/lib/monthly-data'
 
@@ -8,7 +9,7 @@ const pct = (n: number) => `${(n * 100).toFixed(1).replace('.', ',')}%`
 const nav = [['Visão Executiva','exec'],['DRE Gerencial','dre'],['Balanço','bp'],['DFC','dfc'],['DMPL','dmpl'],['Indicadores','ind']] as const
 
 export default function Home() {
-  const [page, setPage] = React.useState('exec')
+  const [page, setPage] = useState('exec')
   const item = nav.find(x => x[1] === page)?.[0]
   return <main className="shell">
     <aside className="side"><div className="brand"><b>BP</b><div><strong>BP Financeiro</strong><span>Controladoria & BI</span></div></div><div className="company"><small>EMPRESA DEMONSTRATIVA</small><strong>Grupo Exemplo</strong><span>2026 • Modelo integrado</span></div><nav>{nav.map(([label,id]) => <button key={id} className={page===id?'active':''} onClick={()=>setPage(id)}>{label}</button>)}</nav><footer>V1.2 • Projeto Consultoria Financeira</footer></aside>
@@ -17,8 +18,6 @@ export default function Home() {
     </section>
   </main>
 }
-
-const React = require('react')
 
 function Executive(){
   const maxRevenue = Math.max(...monthlyData.map(m=>m.receitaLiquida))
@@ -35,7 +34,7 @@ function BP(){return <Panel title="Balanço Patrimonial" wide><div className="ta
 function DFC(){return <Panel title="DFC — Método Indireto" wide><Table rows={[["Lucro Líquido",d.lucroLiquido],["(+) Depreciação",d.depreciacao],["(-) Aumento de Contas a Receber",d.aumentoContasReceber],["(-) Aumento de Estoques",d.aumentoEstoques],["(+) Aumento de Fornecedores",d.aumentoFornecedores],["(+) Aumento de Obrigações",d.aumentoObrigacoes],["= Caixa Operacional",d.caixaOperacional],["Investimentos",d.investimentos],["Financiamentos",d.financiamentos],["= Variação Líquida",d.caixaFinal-d.caixaInicial],["Caixa Inicial",d.caixaInicial],["= CAIXA FINAL",d.caixaFinal]]}/></Panel>}
 function DMPL(){return <Panel title="DMPL — Ponte do Patrimônio Líquido" wide><Table rows={[["PL Inicial",d.plInicial],["(+) Lucro Líquido",d.lucroLiquido],["(-) Dividendos / Distribuições",d.dividendos],["(+/-) Outros movimentos",0],["= PL Final",d.plFinal]]}/><div className="note">O Lucro Líquido de R$ 120 mil é o resultado do período. Lucros acumulados é um saldo patrimonial e não precisa ser igual ao Lucro Líquido.</div></Panel>}
 function Indicators(){const rows=[['Margem Bruta',indicators.margemBruta],['Margem Operacional',indicators.margemOperacional],['Margem Líquida',indicators.margemLiquida],['PL / Ativo',indicators.participacaoPL],['Passivo / Ativo',indicators.participacaoPassivo]];return <div className="indicator-grid">{rows.map(([x,v])=><div className="indicator" key={x as string}><span>{x}</span><strong>{pct(v as number)}</strong><div className="progress"><i style={{width:`${Math.min((v as number)*100,100)}%`}}/></div></div>)}</div>}
-function Panel({title,children,wide=false}:{title:string,children:React.ReactNode,wide?:boolean}){return <section className={`panel ${wide?'wide':''}`}><div className="panel-title"><h2>{title}</h2><span>2026</span></div>{children}</section>}
+function Panel({title,children,wide=false}:{title:string,children:ReactNode,wide?:boolean}){return <section className={`panel ${wide?'wide':''}`}><div className="panel-title"><h2>{title}</h2><span>2026</span></div>{children}</section>}
 function Card({title,value}:{title:string,value:number}){return <div className="card"><span>{title}</span><strong>{brl(value)}</strong><small>modelo demonstrativo</small></div>}
 function Rows({rows}:{rows:(string|number)[][]}){return <div className="rows">{rows.map(([x,v])=><div className="row" key={x as string}><span>{x}</span><b>{brl(v as number)}</b></div>)}</div>}
 function Table({rows}:{rows:(string|number)[][]}){return <table><tbody>{rows.map(([x,v])=><tr className={(x as string).startsWith('=')?'total':''} key={x as string}><td>{x}</td><td>{brl(v as number)}</td></tr>)}</tbody></table>}
