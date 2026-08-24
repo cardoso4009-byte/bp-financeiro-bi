@@ -31,5 +31,15 @@ export function summarizeEntries(entries: FinancialEntry[]) {
   const financing = entries.filter(e => e.type === 'Financiamento').reduce((s, e) => s + e.value, 0)
   const open = entries.filter(e => e.status === 'Em aberto').reduce((s, e) => s + e.value, 0)
   const net = entries.reduce((s, e) => s + e.value, 0)
-  return { revenue, opex, capex, financing, open, net }
+  const ebitda = revenue - opex
+  const cashOperating = entries.filter(e => (e.type === 'Receita' || e.type === 'Despesa') && e.status === 'Pago').reduce((s, e) => s + e.value, 0)
+  const cashInvesting = -capex
+  const cashFinancing = financing
+  const cashVariation = cashOperating + cashInvesting + cashFinancing
+  return { revenue, opex, capex, financing, open, net, ebitda, cashOperating, cashInvesting, cashFinancing, cashVariation }
+}
+
+export function monthlySummary(entries: FinancialEntry[]) {
+  const months = Array.from(new Set(entries.map(e => e.competence))).sort()
+  return months.map(month => ({ month, ...summarizeEntries(entries.filter(e => e.competence === month)) }))
 }
