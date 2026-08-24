@@ -6,114 +6,42 @@ import { monthlyData, budgetData } from '@/lib/monthly-data'
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 const pct = (n: number) => `${(n * 100).toFixed(1).replace('.', ',')}%`
-const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-const nav = [['Visão Executiva', 'exec'], ['DRE Gerencial', 'dre'], ['Balanço', 'bp'], ['DFC', 'dfc'], ['DMPL', 'dmpl'], ['Indicadores', 'ind']] as const
-const modules = [['Gestão Financeira', '/gestao'], ['Capital de Giro', '/capital-giro'], ['Fluxo de Caixa', '/fluxo-caixa'], ['Lançamentos', '/lancamentos'], ['Integração Financeira', '/integracao'], ['Contabilidade', '/contabil'], ['Razão & Balancete', '/razao'], ['Mapeamento Contábil', '/mapeamento-contabil'], ['Demonstrações Integradas', '/demonstracoes-integradas'], ['DFC Integrada', '/dfc-integrada'], ['Fechamento Contábil', '/fechamento-contabil'], ['Auditoria Contábil', '/auditoria-contabil']] as const
+const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+const nav = [['Visão Executiva','exec'],['DRE Gerencial','dre'],['Balanço','bp'],['DFC','dfc'],['DMPL','dmpl'],['Indicadores','ind']] as const
+const modules = [['Gestão Financeira','/gestao'],['Capital de Giro','/capital-giro'],['Fluxo de Caixa','/fluxo-caixa'],['Lançamentos','/lancamentos'],['Integração Financeira','/integracao'],['Contabilidade','/contabil'],['Razão & Balancete','/razao'],['Mapeamento Contábil','/mapeamento-contabil'],['Demonstrações Integradas','/demonstracoes-integradas'],['DFC Integrada','/dfc-integrada'],['Fechamento Contábil','/fechamento-contabil'],['Auditoria Contábil','/auditoria-contabil']] as const
 
-type Period = { start: number; end: number; base: number }
-type DREKey = 'receitaLiquida' | 'lucroBruto' | 'resultadoOperacional' | 'lucroLiquido'
-type Row = Record<string, unknown>
+type Period={start:number;end:number;base:number}
+type DREKey='receitaLiquida'|'lucroBruto'|'resultadoOperacional'|'lucroLiquido'
+type Row=Record<string,unknown>
 
-export default function Home() {
-  const [page, setPage] = useState('exec')
-  const [period, setPeriod] = useState<Period>({ start: 0, end: 11, base: 11 })
-  const item = nav.find((x) => x[1] === page)
-  const selected = monthlyData.slice(period.start, period.end + 1)
-  const periodLabel = period.start === period.end ? months[period.start] : `${months[period.start]}–${months[period.end]}`
+autoExportFix()
+function autoExportFix(){return null}
 
-  return (
-    <main className="shell">
-      <aside className="side">
-        <div className="brand"><b>BP</b><div><strong>BP Financeiro</strong><span>Controladoria & BI</span></div></div>
-        <div className="company"><small>EMPRESA DEMONSTRATIVA</small><strong>Grupo Exemplo</strong><span>2026 • Modelo integrado</span></div>
-        <nav>
-          {nav.map(([label, id]) => <button key={id} className={page === id ? 'active' : ''} onClick={() => setPage(id)}>{label}</button>)}
-          <div className="nav-divider">MÓDULOS GERENCIAIS</div>
-          {modules.map(([label, url]) => <a className="nav-link" key={url} href={url}>{label}</a>)}
-        </nav>
-        <footer>V2.5 • Projeto Consultoria Financeira</footer>
-      </aside>
-
-      <section className="content">
-        <header>
-          <div><small>CONTROLADORIA FINANCEIRA</small><h1>{item?.[0]}</h1><p>Demonstrações integradas • Regime de competência</p></div>
-          <div className="period-controls">
-            <label>Período de análise</label>
-            <div>
-              <select value={period.start} onChange={(e) => setPeriod((p) => ({ ...p, start: Number(e.target.value), end: Math.max(Number(e.target.value), p.end) }))}>{months.map((m, i) => <option key={m} value={i}>Início: {m}/2026</option>)}</select>
-              <select value={period.end} onChange={(e) => setPeriod((p) => ({ ...p, start: Math.min(p.start, Number(e.target.value)), end: Number(e.target.value) }))}>{months.map((m, i) => <option key={m} value={i}>Fim: {m}/2026</option>)}</select>
-              <select value={period.base} onChange={(e) => setPeriod((p) => ({ ...p, base: Number(e.target.value) }))}>{months.map((m, i) => <option key={m} value={i}>Data-base: {m}/2026</option>)}</select>
-            </div>
-            <span>{periodLabel}/2026 • BP em {months[period.base]}/2026</span>
-          </div>
-        </header>
-
-        {page === 'exec' && <Executive data={selected} />}
-        {page === 'dre' && <DRE start={period.start} end={period.end} />}
-        {page === 'bp' && <BP />}
-        {page === 'dfc' && <DFC />}
-        {page === 'dmpl' && <DMPL />}
-        {page === 'ind' && <Indicators />}
-      </section>
-    </main>
-  )
+export default function Home(){
+ const [page,setPage]=useState('exec')
+ const [period,setPeriod]=useState<Period>({start:0,end:11,base:11})
+ const item=nav.find(x=>x[1]===page)
+ const selected=monthlyData.slice(period.start,period.end+1)
+ const periodLabel=period.start===period.end?months[period.start]:`${months[period.start]}–${months[period.end]}`
+ return <main className="shell"><aside className="side"><div className="brand"><b>BP</b><div><strong>BP Financeiro</strong><span>Controladoria & BI</span></div></div><div className="company"><small>EMPRESA DEMONSTRATIVA</small><strong>Grupo Exemplo</strong><span>2026 • Modelo integrado</span></div><nav>{nav.map(([label,id])=><button key={id} className={page===id?'active':''} onClick={()=>setPage(id)}>{label}</button>)}<div className="nav-divider">MÓDULOS GERENCIAIS</div>{modules.map(([label,url])=><a className="nav-link" key={url} href={url}>{label}</a>)}</nav><footer>V2.6 • Projeto Consultoria Financeira</footer></aside><section className="content"><header><div><small>CONTROLADORIA FINANCEIRA</small><h1>{item?.[0]}</h1><p>Demonstrações integradas • Regime de competência</p></div><div className="period-controls"><label>Período de análise</label><div><select value={period.start} onChange={e=>setPeriod(p=>({...p,start:Number(e.target.value),end:Math.max(Number(e.target.value),p.end)}))}>{months.map((m,i)=><option key={m} value={i}>Início: {m}/2026</option>)}</select><select value={period.end} onChange={e=>setPeriod(p=>({...p,start:Math.min(p.start,Number(e.target.value)),end:Number(e.target.value)}))}>{months.map((m,i)=><option key={m} value={i}>Fim: {m}/2026</option>)}</select><select value={period.base} onChange={e=>setPeriod(p=>({...p,base:Number(e.target.value)}))}>{months.map((m,i)=><option key={m} value={i}>Data-base: {m}/2026</option>)}</select></div><span>{periodLabel}/2026 • BP em {months[period.base]}/2026</span></div></header>{page==='exec'&&<Executive data={selected}/>} {page==='dre'&&<DRE start={period.start} end={period.end}/>} {page==='bp'&&<BP/>} {page==='dfc'&&<DFC/>} {page==='dmpl'&&<DMPL/>} {page==='ind'&&<Indicators/>}</section></main>
 }
 
-function Executive({ data }: { data: typeof monthlyData }) {
-  const receita = data.reduce((s, m) => s + m.receitaLiquida, 0)
-  const max = Math.max(...monthlyData.map((m) => m.receitaLiquida))
-  return <>
-    <div className="cards"><Card title="Receita Líquida" value={receita} /><Card title="Lucro Líquido" value={d.lucroLiquido} /><Card title="Caixa Final" value={d.caixaFinal} /><Card title="Patrimônio Líquido" value={d.plFinal} /></div>
-    <div className="grid"><Panel title="DRE resumida"><Rows rows={[["Receita Líquida", receita], ["Lucro Bruto", d.lucroBruto], ["Resultado Operacional", d.resultadoOperacional], ["Lucro Líquido", d.lucroLiquido]]} /></Panel><Panel title="Geração de caixa"><Rows rows={[["Operacional", d.caixaOperacional], ["Investimento", d.investimentos], ["Financiamento", d.financiamentos], ["Variação líquida", d.caixaFinal - d.caixaInicial]]} /></Panel></div>
-    <Panel title="Evolução mensal — Receita Líquida"><div className="monthly-chart">{data.map((m) => <div className="month-col" key={m.month}><div className="month-value">{brl(m.receitaLiquida)}</div><div className="month-bar"><i style={{ height: `${m.receitaLiquida / max * 100}%` }} /></div><span>{m.month}</span></div>)}</div></Panel>
-    <div className="grid"><Panel title="Estrutura patrimonial"><Bar label="Ativo" value={d.ativoTotal} max={d.ativoTotal} /><Bar label="Passivo" value={d.passivoTotal} max={d.ativoTotal} /><Bar label="Patrimônio Líquido" value={d.plFinal} max={d.ativoTotal} /></Panel><Panel title="Checks de integridade"><Check text="Ativo = Passivo + PL" value={checks.patrimonial === 0 ? 'OK' : 'Revisar'} ok={checks.patrimonial === 0} /><Check text="DFC = Caixa do Balanço" value={checks.caixa === 0 ? 'OK' : 'Revisar'} ok={checks.caixa === 0} /><Check text="DMPL = PL Final" value={checks.dmpl === 0 ? 'OK' : 'Revisar'} ok={checks.dmpl === 0} /></Panel></div>
-  </>
-}
+function Executive({data}:{data:typeof monthlyData}){const receita=data.reduce((s,m)=>s+m.receitaLiquida,0);const max=Math.max(...monthlyData.map(m=>m.receitaLiquida));return <><div className="cards"><Card title="Receita Líquida" value={receita}/><Card title="Lucro Líquido" value={d.lucroLiquido}/><Card title="Caixa Final" value={d.caixaFinal}/><Card title="Patrimônio Líquido" value={d.plFinal}/></div><div className="grid"><Panel title="DRE resumida"><Rows rows={[["Receita Líquida",receita],["Lucro Bruto",d.lucroBruto],["Resultado Operacional",d.resultadoOperacional],["Lucro Líquido",d.lucroLiquido]]}/></Panel><Panel title="Geração de caixa"><Rows rows={[["Operacional",d.caixaOperacional],["Investimento",d.investimentos],["Financiamento",d.financiamentos],["Variação líquida",d.caixaFinal-d.caixaInicial]]}/></Panel></div><Panel title="Evolução mensal — Receita Líquida"><div className="monthly-chart">{data.map(m=><div className="month-col" key={m.month}><div className="month-value">{brl(m.receitaLiquida)}</div><div className="month-bar"><i style={{height:`${m.receitaLiquida/max*100}%`}}/></div><span>{m.month}</span></div>)}</div></Panel><div className="grid"><Panel title="Estrutura patrimonial"><Bar label="Ativo" value={d.ativoTotal} max={d.ativoTotal}/><Bar label="Passivo" value={d.passivoTotal} max={d.ativoTotal}/><Bar label="Patrimônio Líquido" value={d.plFinal} max={d.ativoTotal}/></Panel><Panel title="Checks de integridade"><Check text="Ativo = Passivo + PL" value={checks.patrimonial===0?'OK':'Revisar'} ok={checks.patrimonial===0}/><Check text="DFC = Caixa do Balanço" value={checks.caixa===0?'OK':'Revisar'} ok={checks.caixa===0}/><Check text="DMPL = PL Final" value={checks.dmpl===0?'OK':'Revisar'} ok={checks.dmpl===0}/></Panel></div></>}
 
-function DRE({ start, end }: { start: number; end: number }) {
-  const [view, setView] = useState<'mensal' | 'acumulado' | 'trimestral' | 'semestral' | 'anual'>('mensal')
-  const [showMargins, setShowMargins] = useState(true)
-  const [variance, setVariance] = useState(true)
-  const base = monthlyData.slice(start, end + 1)
-  const budgets = budgetData.slice(start, end + 1)
-  const rows: Array<[string, DREKey]> = [['Receita Líquida', 'receitaLiquida'], ['Lucro Bruto', 'lucroBruto'], ['Resultado Operacional', 'resultadoOperacional'], ['Lucro Líquido', 'lucroLiquido']]
+function DRE({start,end}:{start:number;end:number}){const [view,setView]=useState<'mensal'|'acumulado'|'trimestral'|'semestral'|'anual'>('mensal');const [showMargins,setShowMargins]=useState(true);const [variance,setVariance]=useState(true);const base=monthlyData.slice(start,end+1);const budgets=budgetData.slice(start,end+1);const rows:Array<[string,DREKey]>=[['Receita Líquida','receitaLiquida'],['Lucro Bruto','lucroBruto'],['Resultado Operacional','resultadoOperacional'],['Lucro Líquido','lucroLiquido']];const groups:Row[][]=view==='mensal'?base.map(x=>[x as unknown as Row]):view==='trimestral'?group(base as unknown as Row[],3):view==='semestral'?group(base as unknown as Row[],6):[base as unknown as Row[]];const budgetGroups:Row[][]=view==='mensal'?budgets.map(x=>[x as unknown as Row]):view==='trimestral'?group(budgets as unknown as Row[],3):view==='semestral'?group(budgets as unknown as Row[],6):[budgets as unknown as Row[]];const labels=view==='mensal'?base.map(x=>x.month):view==='trimestral'?groups.map((_,i)=>`T${i+1}`):view==='semestral'?groups.map((_,i)=>`S${i+1}`):view==='anual'?['2026']:['Acumulado'];const totalReal=groups.flat();const totalBudget=budgetGroups.flat();return <Panel title="DRE Gerencial — Orçado x Realizado" wide><div className="dre-toolbar"><div><span>VISÃO</span><div className="segmented">{(['mensal','acumulado','trimestral','semestral','anual'] as const).map(v=><button key={v} className={view===v?'selected':''} onClick={()=>setView(v)}>{v[0].toUpperCase()+v.slice(1)}</button>)}</div></div><div className="dre-actions"><button className={showMargins?'selected':''} onClick={()=>setShowMargins(!showMargins)}>％ Mostrar Margens</button><button onClick={()=>window.print()}>⇩ Exportar</button><button className={variance?'selected':''} onClick={()=>setVariance(!variance)}>▥ Análise de Variações</button></div></div><div className="table-wrap dre-wrap"><table className="dre-table"><thead><tr><th rowSpan={2}>Valores em R$</th>{labels.map((label,i)=><th key={i} colSpan={variance?4:2}>{label}/2026</th>)}{view!=='anual'&&<th colSpan={variance?4:2}>Total Período</th>}</tr><tr>{labels.map((_,i)=><Fragment key={i}><th>Realizado</th><th>Orçado</th>{variance&&<><th>Var. R$</th><th>Var. %</th></>}</Fragment>)}{view!=='anual'&&<><th>Realizado</th><th>Orçado</th>{variance&&<><th>Var. R$</th><th>Var. %</th></>}</>}</tr></thead><tbody>{rows.map(([label,key])=><DreRow key={key} label={label} field={key} groups={groups} budgetGroups={budgetGroups} totalReal={totalReal} totalBudget={totalBudget} variance={variance}/>)}{showMargins&&<><MarginRow label="Margem Bruta (%)" numerator="lucroBruto" groups={groups} budgetGroups={budgetGroups} totalReal={totalReal} totalBudget={totalBudget} variance={variance}/><MarginRow label="Margem Operacional (%)" numerator="resultadoOperacional" groups={groups} budgetGroups={budgetGroups} totalReal={totalReal} totalBudget={totalBudget} variance={variance}/><MarginRow label="Margem Líquida (%)" numerator="lucroLiquido" groups={groups} budgetGroups={budgetGroups} totalReal={totalReal} totalBudget={totalBudget} variance={variance}/></>}</tbody></table></div><div className="dre-foot"><span>Variação = Realizado − Orçado • p.p. = pontos percentuais</span><span>Atualizado automaticamente</span></div></Panel>}
 
-  const groups = view === 'mensal' ? base.map((x) => [x]) : view === 'trimestral' ? group(base, 3) : view === 'semestral' ? group(base, 6) : [base]
-  const budgetGroups = view === 'mensal' ? budgets.map((x) => [x]) : view === 'trimestral' ? group(budgets, 3) : view === 'semestral' ? group(budgets, 6) : [budgets]
-  const labels = view === 'mensal' ? base.map((x) => x.month) : view === 'trimestral' ? groups.map((_, i) => `T${i + 1}`) : view === 'semestral' ? groups.map((_, i) => `S${i + 1}`) : view === 'anual' ? ['2026'] : ['Acumulado']
-  const totalReal = groups.flat()
-  const totalBudget = budgetGroups.flat()
+function group<T>(items:T[],size:number){const out:T[][]=[];for(let i=0;i<items.length;i+=size)out.push(items.slice(i,i+size));return out}
+function sumField(items:Row[],field:string){return items.reduce((s,m)=>s+Number(m[field]??0),0)}
+function DreRow({label,field,groups,budgetGroups,totalReal,totalBudget,variance}:{label:string;field:DREKey;groups:Row[][];budgetGroups:Row[][];totalReal:Row[];totalBudget:Row[];variance:boolean}){const cells=groups.map((g,i)=>{const r=sumField(g,field),o=sumField(budgetGroups[i],field),v=r-o;return <Fragment key={i}><td>{brl(r)}</td><td>{brl(o)}</td>{variance&&<><td className={v>=0?'positive':'negative'}>{brl(v)}</td><td className={v>=0?'positive':'negative'}>{o?`${(v/Math.abs(o)*100).toFixed(1).replace('.',',')}%`:'—'}</td></>}</Fragment>});const r=sumField(totalReal,field),o=sumField(totalBudget,field),v=r-o;return <tr className="dre-main-row"><td>{label}</td>{cells}{groups.length>1&&<><td className="total-col">{brl(r)}</td><td className="total-col">{brl(o)}</td>{variance&&<><td className={`total-col ${v>=0?'positive':'negative'}`}>{brl(v)}</td><td className={`total-col ${v>=0?'positive':'negative'}`}>{o?`${(v/Math.abs(o)*100).toFixed(1).replace('.',',')}%`:'—'}</td></>}</>}</tr>}
+function MarginRow({label,numerator,groups,budgetGroups,totalReal,totalBudget,variance}:{label:string;numerator:string;groups:Row[][];budgetGroups:Row[][];totalReal:Row[];totalBudget:Row[];variance:boolean}){const cells=groups.map((g,i)=>{const rev=sumField(g,'receitaLiquida'),r=rev?sumField(g,numerator)/rev:0,brev=sumField(budgetGroups[i],'receitaLiquida'),o=brev?sumField(budgetGroups[i],numerator)/brev:0,v=r-o;return <Fragment key={i}><td>{pct(r)}</td><td>{pct(o)}</td>{variance&&<><td className={v>=0?'positive':'negative'}>{(v*100).toFixed(1).replace('.',',')} p.p.</td><td>—</td></>}</Fragment>});const rev=sumField(totalReal,'receitaLiquida'),r=rev?sumField(totalReal,numerator)/rev:0,brev=sumField(totalBudget,'receitaLiquida'),o=brev?sumField(totalBudget,numerator)/brev:0,v=r-o;return <tr className="margin-row"><td>{label}</td>{cells}{groups.length>1&&<><td className="total-col">{pct(r)}</td><td className="total-col">{pct(o)}</td>{variance&&<><td className={`total-col ${v>=0?'positive':'negative'}`}>{(v*100).toFixed(1).replace('.',',')} p.p.</td><td className="total-col">—</td></>}</>}</tr>}
 
-  return <Panel title="DRE Gerencial — Orçado x Realizado" wide>
-    <div className="dre-toolbar"><div><span>VISÃO</span><div className="segmented">{(['mensal', 'acumulado', 'trimestral', 'semestral', 'anual'] as const).map((v) => <button key={v} className={view === v ? 'selected' : ''} onClick={() => setView(v)}>{v[0].toUpperCase() + v.slice(1)}</button>)}</div></div><div className="dre-actions"><button className={showMargins ? 'selected' : ''} onClick={() => setShowMargins(!showMargins)}>％ Mostrar Margens</button><button onClick={() => window.print()}>⇩ Exportar</button><button className={variance ? 'selected' : ''} onClick={() => setVariance(!variance)}>▥ Análise de Variações</button></div></div>
-    <div className="table-wrap dre-wrap"><table className="dre-table"><thead><tr><th rowSpan={2}>Valores em R$</th>{labels.map((label, i) => <th key={i} colSpan={variance ? 4 : 2}>{label}/2026</th>)}{view !== 'anual' && <th colSpan={variance ? 4 : 2}>Total Período</th>}</tr><tr>{labels.map((_, i) => <Fragment key={i}><th>Realizado</th><th>Orçado</th>{variance && <><th>Var. R$</th><th>Var. %</th></>}</Fragment>)}{view !== 'anual' && <><th>Realizado</th><th>Orçado</th>{variance && <><th>Var. R$</th><th>Var. %</th></>}</>}</tr></thead><tbody>{rows.map(([label, key]) => <DreRow key={key} label={label} field={key} groups={groups} budgetGroups={budgetGroups} totalReal={totalReal} totalBudget={totalBudget} variance={variance} />)}{showMargins && <><MarginRow label="Margem Bruta (%)" numerator="lucroBruto" groups={groups} budgetGroups={budgetGroups} totalReal={totalReal} totalBudget={totalBudget} variance={variance} /><MarginRow label="Margem Operacional (%)" numerator="resultadoOperacional" groups={groups} budgetGroups={budgetGroups} totalReal={totalReal} totalBudget={totalBudget} variance={variance} /><MarginRow label="Margem Líquida (%)" numerator="lucroLiquido" groups={groups} budgetGroups={budgetGroups} totalReal={totalReal} totalBudget={totalBudget} variance={variance} /></>}</tbody></table></div>
-    <div className="dre-foot"><span>Variação = Realizado − Orçado • p.p. = pontos percentuais</span><span>Atualizado automaticamente</span></div>
-  </Panel>
-}
-
-function group<T>(items: T[], size: number) { const out: T[][] = []; for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size)); return out }
-function sumField(items: Row[], field: string) { return items.reduce((s, m) => s + Number(m[field] ?? 0), 0) }
-
-function DreRow({ label, field, groups, budgetGroups, totalReal, totalBudget, variance }: { label: string; field: DREKey; groups: Row[][]; budgetGroups: Row[][]; totalReal: Row[]; totalBudget: Row[]; variance: boolean }) {
-  const cells = groups.map((g, i) => { const r = sumField(g, field); const o = sumField(budgetGroups[i], field); const v = r - o; return <Fragment key={i}><td>{brl(r)}</td><td>{brl(o)}</td>{variance && <><td className={v >= 0 ? 'positive' : 'negative'}>{brl(v)}</td><td className={v >= 0 ? 'positive' : 'negative'}>{o ? `${(v / Math.abs(o) * 100).toFixed(1).replace('.', ',')}%` : '—'}</td></>}</Fragment> })
-  const r = sumField(totalReal, field); const o = sumField(totalBudget, field); const v = r - o
-  return <tr className="dre-main-row"><td>{label}</td>{cells}{groups.length > 1 && <><td className="total-col">{brl(r)}</td><td className="total-col">{brl(o)}</td>{variance && <><td className={`total-col ${v >= 0 ? 'positive' : 'negative'}`}>{brl(v)}</td><td className={`total-col ${v >= 0 ? 'positive' : 'negative'}`}>{o ? `${(v / Math.abs(o) * 100).toFixed(1).replace('.', ',')}%` : '—'}</td></>}</>}</tr>
-}
-
-function MarginRow({ label, numerator, groups, budgetGroups, totalReal, totalBudget, variance }: { label: string; numerator: string; groups: Row[][]; budgetGroups: Row[][]; totalReal: Row[]; totalBudget: Row[]; variance: boolean }) {
-  const cells = groups.map((g, i) => { const rev = sumField(g, 'receitaLiquida'); const r = rev ? sumField(g, numerator) / rev : 0; const brev = sumField(budgetGroups[i], 'receitaLiquida'); const o = brev ? sumField(budgetGroups[i], numerator) / brev : 0; const v = r - o; return <Fragment key={i}><td>{pct(r)}</td><td>{pct(o)}</td>{variance && <><td className={v >= 0 ? 'positive' : 'negative'}>{(v * 100).toFixed(1).replace('.', ',')} p.p.</td><td>—</td></>}</Fragment> })
-  const rev = sumField(totalReal, 'receitaLiquida'); const r = rev ? sumField(totalReal, numerator) / rev : 0; const brev = sumField(totalBudget, 'receitaLiquida'); const o = brev ? sumField(totalBudget, numerator) / brev : 0; const v = r - o
-  return <tr className="margin-row"><td>{label}</td>{cells}{groups.length > 1 && <><td className="total-col">{pct(r)}</td><td className="total-col">{pct(o)}</td>{variance && <><td className={`total-col ${v >= 0 ? 'positive' : 'negative'}`}>{(v * 100).toFixed(1).replace('.', ',')} p.p.</td><td className="total-col">—</td></>}</>}</tr>
-}
-
-function BP() { return <Panel title="Balanço Patrimonial" wide><div className="tables"><Table rows={[["Ativo Circulante", d.ativoCirculante], ["Ativo Não Circulante", d.ativoNaoCirculante], ["ATIVO TOTAL", d.ativoTotal]]} /><Table rows={[["Passivo Circulante", d.passivoCirculante], ["Passivo Não Circulante", d.passivoNaoCirculante], ["PASSIVO TOTAL", d.passivoTotal], ["Patrimônio Líquido", d.plFinal], ["PASSIVO + PL", d.passivoTotal + d.plFinal]]} /></div></Panel> }
-function DFC() { return <Panel title="DFC — Método Indireto" wide><Table rows={[["Lucro Líquido", d.lucroLiquido], ["(+) Depreciação", d.depreciacao], ["(-) Aumento de Contas a Receber", d.aumentoContasReceber], ["(-) Aumento de Estoques", d.aumentoEstoques], ["(+) Aumento de Fornecedores", d.aumentoFornecedores], ["(+) Aumento de Obrigações", d.aumentoObrigacoes], ["= Caixa Operacional", d.caixaOperacional], ["Investimentos", d.investimentos], ["Financiamentos", d.financiamentos], ["= Variação Líquida", d.caixaFinal - d.caixaInicial], ["Caixa Inicial", d.caixaInicial], ["= CAIXA FINAL", d.caixaFinal]]} /></Panel> }
-function DMPL() { return <Panel title="DMPL — Ponte do Patrimônio Líquido" wide><Table rows={[["PL Inicial", d.plInicial], ["(+) Lucro Líquido", d.lucroLiquido], ["(-) Dividendos / Distribuições", d.dividendos], ["(+/-) Outros movimentos", 0], ["= PL Final", d.plFinal]]} /><div className="note">O Lucro Líquido é o resultado do período. Lucros acumulados é um saldo patrimonial e não precisa ser igual ao Lucro Líquido.</div></Panel> }
-function Indicators() { const rows = [['Margem Bruta', indicators.margemBruta], ['Margem Operacional', indicators.margemOperacional], ['Margem Líquida', indicators.margemLiquida], ['PL / Ativo', indicators.participacaoPL], ['Passivo / Ativo', indicators.participacaoPassivo]]; return <div className="indicator-grid">{rows.map(([x, v]) => <div className="indicator" key={x}><span>{x}</span><strong>{pct(v)}</strong><div className="progress"><i style={{ width: `${Math.min(v * 100, 100)}%` }} /></div></div>)}</div> }
-
-function Panel({ title, children, wide = false }: { title: string; children: ReactNode; wide?: boolean }) { return <section className={`panel ${wide ? 'wide' : ''}`}><div className="panel-title"><h2>{title}</h2><span>2026</span></div>{children}</section> }
-function Card({ title, value }: { title: string; value: number }) { return <div className="card"><span>{title}</span><strong>{brl(value)}</strong><small>modelo demonstrativo</small></div> }
-function Rows({ rows }: { rows: Array<[string, number]> }) { return <div className="rows">{rows.map(([x, v]) => <div className="row" key={x}><span>{x}</span><b>{brl(v)}</b></div>)}</div> }
-function Table({ rows }: { rows: Array<[string, number]> }) { return <table><tbody>{rows.map(([x, v]) => <tr className={x.startsWith('=') ? 'total' : ''} key={x}><td>{x}</td><td>{brl(v)}</td></tr>)}</tbody></table> }
-function Bar({ label, value, max }: { label: string; value: number; max: number }) { return <div className="bar"><div><span>{label}</span><b>{brl(value)}</b></div><div className="track"><i style={{ width: `${max ? value / max * 100 : 0}%` }} /></div></div> }
-function Check({ text, value, ok }: { text: string; value: string; ok: boolean }) { return <div className="check"><i className={ok ? 'ok' : 'bad'}>{ok ? '✓' : '!'}</i><div><b>{text}</b><small>{value}</small></div></div> }
+function BP(){return <Panel title="Balanço Patrimonial" wide><div className="tables"><Table rows={[["Ativo Circulante",d.ativoCirculante],["Ativo Não Circulante",d.ativoNaoCirculante],["ATIVO TOTAL",d.ativoTotal]]}/><Table rows={[["Passivo Circulante",d.passivoCirculante],["Passivo Não Circulante",d.passivoNaoCirculante],["PASSIVO TOTAL",d.passivoTotal],["Patrimônio Líquido",d.plFinal],["PASSIVO + PL",d.passivoTotal+d.plFinal]]}/></div></Panel>}
+function DFC(){return <Panel title="DFC — Método Indireto" wide><Table rows={[["Lucro Líquido",d.lucroLiquido],["(+) Depreciação",d.depreciacao],["(-) Aumento de Contas a Receber",d.aumentoContasReceber],["(-) Aumento de Estoques",d.aumentoEstoques],["(+) Aumento de Fornecedores",d.aumentoFornecedores],["(+) Aumento de Obrigações",d.aumentoObrigacoes],["= Caixa Operacional",d.caixaOperacional],["Investimentos",d.investimentos],["Financiamentos",d.financiamentos],["= Variação Líquida",d.caixaFinal-d.caixaInicial],["Caixa Inicial",d.caixaInicial],["= CAIXA FINAL",d.caixaFinal]]}/></Panel>}
+function DMPL(){return <Panel title="DMPL — Ponte do Patrimônio Líquido" wide><Table rows={[["PL Inicial",d.plInicial],["(+) Lucro Líquido",d.lucroLiquido],["(-) Dividendos / Distribuições",d.dividendos],["(+/-) Outros movimentos",0],["= PL Final",d.plFinal]]}/><div className="note">O Lucro Líquido é o resultado do período. Lucros acumulados é um saldo patrimonial e não precisa ser igual ao Lucro Líquido.</div></Panel>}
+function Indicators(){const rows:Array<[string,number]>=[['Margem Bruta',Number(indicators.margemBruta)],['Margem Operacional',Number(indicators.margemOperacional)],['Margem Líquida',Number(indicators.margemLiquida)],['PL / Ativo',Number(indicators.participacaoPL)],['Passivo / Ativo',Number(indicators.participacaoPassivo)]];return <div className="indicator-grid">{rows.map(([x,v])=><div className="indicator" key={x}><span>{x}</span><strong>{pct(v)}</strong><div className="progress"><i style={{width:`${Math.min(v*100,100)}%`}}/></div></div>)}</div>}
+function Panel({title,children,wide=false}:{title:string;children:ReactNode;wide?:boolean}){return <section className={`panel ${wide?'wide':''}`}><div className="panel-title"><h2>{title}</h2><span>2026</span></div>{children}</section>}
+function Card({title,value}:{title:string;value:number}){return <div className="card"><span>{title}</span><strong>{brl(value)}</strong><small>modelo demonstrativo</small></div>}
+function Rows({rows}:{rows:Array<[string,number]>}){return <div className="rows">{rows.map(([x,v])=><div className="row" key={x}><span>{x}</span><b>{brl(v)}</b></div>)}</div>}
+function Table({rows}:{rows:Array<[string,number]>}){return <table><tbody>{rows.map(([x,v])=><tr className={x.startsWith('=')?'total':''} key={x}><td>{x}</td><td>{brl(v)}</td></tr>)}</tbody></table>}
+function Bar({label,value,max}:{label:string;value:number;max:number}){return <div className="bar"><div><span>{label}</span><b>{brl(value)}</b></div><div className="track"><i style={{width:`${max?value/max*100:0}%`}}/></div></div>}
+function Check({text,value,ok}:{text:string;value:string;ok:boolean}){return <div className="check"><i className={ok?'ok':'bad'}>{ok?'✓':'!'}</i><div><b>{text}</b><small>{value}</small></div></div>}
