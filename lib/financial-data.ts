@@ -32,6 +32,8 @@ export type FinancialData = {
   plFinal: number
 }
 
+// Totais da mesma base mensal usada pelo DRE e pelo fluxo projetado.
+// Resultado operacional é apresentado após depreciação; EBITDA permanece separado.
 export const financialData: FinancialData = {
   receitaBruta: 1_000_000,
   deducoes: -100_000,
@@ -39,12 +41,12 @@ export const financialData: FinancialData = {
   custos: -500_000,
   lucroBruto: 400_000,
   despesasComerciais: -70_000,
-  despesasAdministrativas: -100_000,
-  outrasDespesasOperacionais: -20_000,
-  resultadoOperacional: 210_000,
+  despesasAdministrativas: -101_000,
+  outrasDespesasOperacionais: -19_000,
+  resultadoOperacional: 180_000,
   resultadoFinanceiro: -40_000,
   irCsll: -50_000,
-  lucroLiquido: 120_000,
+  lucroLiquido: 90_000,
   depreciacao: 30_000,
   aumentoContasReceber: -50_000,
   aumentoEstoques: -30_000,
