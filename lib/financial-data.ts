@@ -34,6 +34,7 @@ export type FinancialData = {
 
 // Totais da mesma base mensal usada pelo DRE e pelo fluxo projetado.
 // Resultado operacional é apresentado após depreciação; EBITDA permanece separado.
+// O caixa operacional é reconciliado pela soma das linhas da DFC.
 export const financialData: FinancialData = {
   receitaBruta: 1_000_000,
   deducoes: -100_000,
@@ -52,11 +53,11 @@ export const financialData: FinancialData = {
   aumentoEstoques: -30_000,
   aumentoFornecedores: 40_000,
   aumentoObrigacoes: 10_000,
-  caixaOperacional: 120_000,
+  caixaOperacional: 90_000,
   investimentos: -110_000,
   financiamentos: 40_000,
   caixaInicial: 50_000,
-  caixaFinal: 100_000,
+  caixaFinal: 70_000,
   ativoCirculante: 420_000,
   ativoNaoCirculante: 350_000,
   ativoTotal: 770_000,
@@ -70,7 +71,7 @@ export const financialData: FinancialData = {
 
 export const checks = {
   patrimonial: financialData.ativoTotal - financialData.passivoTotal - financialData.plFinal,
-  caixa: financialData.caixaFinal - financialData.caixaFinal,
+  caixa: financialData.caixaFinal - (financialData.caixaInicial + financialData.caixaOperacional + financialData.investimentos + financialData.financiamentos),
   dmpl: financialData.plInicial + financialData.lucroLiquido + financialData.dividendos - financialData.plFinal,
 }
 
