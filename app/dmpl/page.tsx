@@ -9,6 +9,7 @@ const brl = (n: number) => n.toLocaleString('pt-BR', {
 })
 
 export default function DMPLReconciliationPage() {
+  // Deploy marker: force a fresh production build after the reconciliation fix.
   // Dividendos já são armazenados como saída patrimonial (valor negativo).
   // Portanto, a ponte deve somá-los ao PL inicial + lucro líquido.
   const plCalculated = d.plInicial + d.lucroLiquido + d.dividendos
