@@ -4,7 +4,6 @@ import { cashFlowEngine } from './dfc-engine'
 import { chartOfAccounts, journalIsBalanced, sampleJournal } from './contabil-model'
 
 export type AuditSeverity = 'critical' | 'warning' | 'info'
-
 type Evidence = { source:string; value:string; detail:string }
 const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})
 
@@ -33,9 +32,9 @@ export function auditEngine(){
       action:'Investigar contas patrimoniais, saldos de abertura e encerramento do resultado.',
       evidence:[{source:'Ativo',value:brl(s.totals.ativo),detail:'Soma das contas patrimoniais classificadas no BP.'},{source:'Passivo',value:brl(s.totals.passivo),detail:'Soma das obrigações classificadas no BP.'},{source:'Patrimônio Líquido',value:brl(s.totals.patrimonio),detail:`Capital registrado + resultado do período (${brl(s.totals.resultadoPeriodo)}).`}] as Evidence[]},
     {id:'cash',label:'DFC: Caixa final conciliado',ok:Math.abs(c.reconciliation)<0.01,severity:'critical' as AuditSeverity,
-      detail:`Caixa final ${brl(c.cashFinal)} − Razão ${brl(cashRow?.balance ?? 0)} = ${brl(c.reconciliation)}`,
+      detail:`Caixa final ${brl(c.finalCash)} − Razão ${brl(cashRow?.balance ?? 0)} = ${brl(c.reconciliation)}`,
       action:'Conciliar movimentações da DFC com Caixa e Bancos no Razão.',
-      evidence:[{source:'DFC',value:brl(c.cashFinal),detail:'Caixa final calculado pelas movimentações de caixa.'},{source:`Razão ${cashAccount?.name ?? 'Caixa e Bancos'}`,value:brl(cashRow?.balance ?? 0),detail:'Saldo da conta de Caixa e Bancos no Razão.'}] as Evidence[]},
+      evidence:[{source:'DFC',value:brl(c.finalCash),detail:'Caixa final calculado pelas movimentações de caixa.'},{source:`Razão ${cashAccount?.name ?? 'Caixa e Bancos'}`,value:brl(cashRow?.balance ?? 0),detail:'Saldo da conta de Caixa e Bancos no Razão.'}] as Evidence[]},
     {id:'result',label:'DRE: resultado calculado',ok:Number.isFinite(result),severity:'info' as AuditSeverity,
       detail:`Receitas ${brl(s.totals.receitas)} − Custos ${brl(s.totals.custos)} − Despesas ${brl(s.totals.despesas)} = ${brl(result)}`,
       action:'Validar classificação de receitas, custos e despesas antes do encerramento.',
