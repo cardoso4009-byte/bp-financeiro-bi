@@ -9,12 +9,19 @@ const brl = (n: number) => n.toLocaleString('pt-BR', {
 })
 
 export default function DMPLReconciliationPage() {
-  // Deploy marker: force a fresh production build after the reconciliation fix.
-  // Dividendos já são armazenados como saída patrimonial (valor negativo).
-  // Portanto, a ponte deve somá-los ao PL inicial + lucro líquido.
   const plCalculated = d.plInicial + d.lucroLiquido + d.dividendos
   const difference = plCalculated - d.plFinal
+  const adjustmentNeeded = d.plFinal - plCalculated
   const ok = Math.abs(difference) < 0.01
+
+  const causes = [
+    ['Ajustes de exercícios anteriores', 'Revisar lançamentos de períodos anteriores transferidos para o PL.'],
+    ['Reservas de lucros ou capital', 'Verificar constituição, reversão ou transferência entre contas patrimoniais.'],
+    ['Ajustes de avaliação patrimonial', 'Verificar lançamentos de avaliação que não passam pelo resultado do período.'],
+    ['Aumento ou redução de capital', 'Conferir integralizações, reduções e demais movimentações de capital.'],
+    ['Outros movimentos patrimoniais', 'Identificar lançamentos diretamente no patrimônio líquido sem classificação na ponte.'],
+    ['Classificação contábil', 'Conferir se algum lançamento foi contabilizado no PL, mas não está mapeado na DMPL.'],
+  ]
 
   return (
     <main className="content" style={{ marginLeft: 0, width: '100%', maxWidth: 1400, margin: '0 auto' }}>
@@ -50,20 +57,47 @@ export default function DMPLReconciliationPage() {
               </tr>
               <tr style={{ background: ok ? '#eefbf3' : '#fff4f4' }}>
                 <td><strong>{ok ? '✓ Reconciliação' : '⚠ Diferença não explicada'}</strong></td>
-                <td style={{ textAlign: 'right', fontWeight: 800 }}>
-                  {brl(Math.abs(difference))}
-                </td>
+                <td style={{ textAlign: 'right', fontWeight: 800 }}>{brl(Math.abs(difference))}</td>
               </tr>
             </tbody>
           </table>
         </div>
 
         {!ok && (
-          <div className="note" style={{ marginTop: 20, borderLeft: '4px solid #d92d20' }}>
-            <strong>Reconciliação pendente.</strong> O PL Final contábil não é explicado pelos movimentos apresentados na DMPL.
-            A ponte explica <strong>{brl(plCalculated)}</strong>, enquanto o PL Final apresentado é <strong>{brl(d.plFinal)}</strong>.
-            Existe uma diferença de <strong>{brl(Math.abs(difference))}</strong> que deve ser investigada antes do fechamento.
-          </div>
+          <>
+            <div className="note" style={{ marginTop: 20, borderLeft: '4px solid #d92d20' }}>
+              <strong>Reconciliação pendente.</strong> A ponte explica <strong>{brl(plCalculated)}</strong>, enquanto o PL Final contábil é <strong>{brl(d.plFinal)}</strong>.
+              O movimento patrimonial mínimo necessário para fechar a ponte é <strong>{brl(adjustmentNeeded)}</strong>.
+            </div>
+
+            <div style={{ marginTop: 24 }}>
+              <div className="panel-title" style={{ marginBottom: 12 }}>
+                <h2>Diagnóstico da diferença</h2>
+                <span>INVESTIGAR</span>
+              </div>
+              <p style={{ margin: '0 0 16px', color: '#667085' }}>
+                As opções abaixo são <strong>hipóteses de investigação</strong>, não causas confirmadas. O objetivo é localizar o lançamento que explica a diferença antes do fechamento.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+                {causes.map(([title, description], index) => (
+                  <div key={title} style={{ border: '1px solid #e4e7ec', borderRadius: 10, padding: 16, background: '#fff' }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <span style={{ minWidth: 28, height: 28, borderRadius: 14, background: '#eef4fb', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#24558a' }}>{index + 1}</span>
+                      <div>
+                        <strong>{title}</strong>
+                        <div style={{ marginTop: 6, color: '#667085', fontSize: 13, lineHeight: 1.5 }}>{description}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="note" style={{ marginTop: 20, borderLeft: '4px solid #24558a' }}>
+              <strong>Cenário de reconciliação:</strong> se a diferença de <strong>{brl(adjustmentNeeded)}</strong> for identificada e classificada como movimento patrimonial válido, a ponte passará de <strong>{brl(plCalculated)}</strong> para <strong>{brl(d.plFinal)}</strong>.
+              <br />O BI não lança esse ajuste automaticamente: ele deve ser confirmado na contabilidade.
+            </div>
+          </>
         )}
 
         {ok && (
