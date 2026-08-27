@@ -1,9 +1,13 @@
 import { statementEngine } from './statement-engine'
 import { cashFlowEngine } from './dfc-engine'
+import { buildTrialBalance } from './razao-balancete'
+import { journalIsBalanced, sampleJournal } from './contabil-model'
 
 export function closingEngine() {
   const s = statementEngine()
   const c = cashFlowEngine()
+  const trial = buildTrialBalance()
+  const journal = journalIsBalanced(sampleJournal)
   const result = s.totals.resultadoPeriodo
   const bpDifference = s.totals.ativo - (s.totals.passivo + s.totals.patrimonio)
   const cashDifference = c.reconciliation
@@ -15,8 +19,8 @@ export function closingEngine() {
   const dmplDifference = s.totals.patrimonio - dmplExpected
 
   const checks = {
-    journal: true,
-    trial: true,
+    journal,
+    trial: trial.balanced,
     bp: Math.abs(bpDifference) < 0.01,
     cash: Math.abs(cashDifference) < 0.01,
     result: Number.isFinite(result),
@@ -31,7 +35,7 @@ export function closingEngine() {
     dmplDifference,
     checks: {
       ...checks,
-      overall: checks.bp && checks.cash && checks.result && checks.dmpl,
+      overall: checks.journal && checks.trial && checks.bp && checks.cash && checks.result && checks.dmpl,
     },
   }
 }
