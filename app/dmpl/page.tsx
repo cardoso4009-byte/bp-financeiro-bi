@@ -9,7 +9,9 @@ const brl = (n: number) => n.toLocaleString('pt-BR', {
 })
 
 export default function DMPLReconciliationPage() {
-  const plCalculated = d.plInicial + d.lucroLiquido - d.dividendos
+  // Dividendos já são armazenados como saída patrimonial (valor negativo).
+  // Portanto, a ponte deve somá-los ao PL inicial + lucro líquido.
+  const plCalculated = d.plInicial + d.lucroLiquido + d.dividendos
   const difference = plCalculated - d.plFinal
   const ok = Math.abs(difference) < 0.01
 
@@ -35,7 +37,7 @@ export default function DMPLReconciliationPage() {
             <tbody>
               <tr><td>PL Inicial</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{brl(d.plInicial)}</td></tr>
               <tr><td>(+) Lucro Líquido</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{brl(d.lucroLiquido)}</td></tr>
-              <tr><td>(-) Dividendos / Distribuições</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{brl(-d.dividendos)}</td></tr>
+              <tr><td>(-) Dividendos / Distribuições</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{brl(d.dividendos)}</td></tr>
               <tr><td>(+/-) Outros movimentos</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{brl(0)}</td></tr>
               <tr style={{ background: 'var(--panel-muted, #f5f7fa)' }}>
                 <td><strong>= PL Calculado pela Ponte</strong></td>
