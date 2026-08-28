@@ -1,4 +1,5 @@
-import { JournalEntry, sampleJournal, chartOfAccounts } from './accounting-core'
+import { chartOfAccounts, type JournalEntry } from './accounting-core'
+import { sampleJournal as legacySampleJournal } from './contabil-model'
 import { buildTrialBalance } from './trial-balance-engine'
 
 type FlowCategory = 'operational' | 'investment' | 'financing'
@@ -7,6 +8,23 @@ function classifyCounterpart(code: string): FlowCategory {
   if (code.startsWith('1.2')) return 'investment'
   if (code.startsWith('2.2') || code.startsWith('3.')) return 'financing'
   return 'operational'
+}
+
+function toCentralJournal(entries: typeof legacySampleJournal): JournalEntry[] {
+  return entries.map((entry) => {
+    const debit = entry.lines.find((line) => line.debit > 0)
+    const credit = entry.lines.find((line) => line.credit > 0)
+    return {
+      id: entry.id,
+      date: entry.date,
+      competence: entry.date.slice(0, 7),
+      description: entry.description,
+      debitAccount: debit?.account ?? '',
+      creditAccount: credit?.account ?? '',
+      amount: debit?.debit ?? credit?.credit ?? 0,
+      source: 'MANUAL',
+    }
+  })
 }
 
 export type CashFlowEvidence = {
@@ -18,7 +36,9 @@ export type CashFlowEvidence = {
   category: FlowCategory
 }
 
-export function cashFlowEngine(entries: JournalEntry[] = sampleJournal) {
+const defaultJournal = toCentralJournal(legacySampleJournal)
+
+export function cashFlowEngine(entries: JournalEntry[] = defaultJournal) {
   const trial = buildTrialBalance(entries, chartOfAccounts)
   const cashCode = '1.1.01'
   let operational = 0
@@ -33,14 +53,14 @@ export function cashFlowEngine(entries: JournalEntry[] = sampleJournal) {
     if (!isCashDebit && !isCashCredit) continue
 
     const cashEffect = isCashDebit ? entry.amount : -entry.amount
-    const counterpartCodes = [isCashDebit ? entry.creditAccount : entry.debitAccount]
+    const counterpartCode = isCashDebit ? entry.creditAccount : entry.debitAccount
 
-    if (counterpartCodes.length === 0 || !counterpartCodes[0]) {
+    if (!counterpartCode) {
       errors.push(`${entry.id}: movimento de caixa sem contrapartida identificada.`)
       continue
     }
 
-    const category = classifyCounterpart(counterpartCodes[0])
+    const category = classifyCounterpart(counterpartCode)
     if (category === 'investment') investment += cashEffect
     else if (category === 'financing') financing += cashEffect
     else operational += cashEffect
@@ -50,7 +70,7 @@ export function cashFlowEngine(entries: JournalEntry[] = sampleJournal) {
       date: entry.date,
       description: entry.description,
       cashEffect,
-      counterpart: counterpartCodes.join(', '),
+      counterpart: counterpartCode,
       category,
     })
   }
