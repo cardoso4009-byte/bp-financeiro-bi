@@ -37,6 +37,16 @@ const sampleJournal: JournalEntry[] = [
     amount: 10000,
     source: 'MANUAL',
   },
+  {
+    id: '003',
+    date: '2026-01-20',
+    competence: '2026-01',
+    description: 'Distribuição de dividendos',
+    debitAccount: '3.3',
+    creditAccount: '1.1.01',
+    amount: 20000,
+    source: 'MANUAL',
+  },
 ]
 
 export default function DMPLReconciliationPage() {
