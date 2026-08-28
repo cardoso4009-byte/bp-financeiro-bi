@@ -1,9 +1,43 @@
 'use client'
 
 import { buildDmpl } from '@/lib/dmpl-engine'
-import { sampleJournal } from '@/lib/contabil-model'
+import type { JournalEntry } from '@/lib/accounting-core'
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+
+// Dados demonstrativos no mesmo formato do motor contábil central.
+const sampleJournal: JournalEntry[] = [
+  {
+    id: '000',
+    date: '2026-01-02',
+    competence: '2026-01',
+    description: 'Integralização de capital social',
+    debitAccount: '1.1.01',
+    creditAccount: '3.1',
+    amount: 250000,
+    source: 'MANUAL',
+  },
+  {
+    id: '001',
+    date: '2026-01-05',
+    competence: '2026-01',
+    description: 'Reconhecimento de receita de vendas',
+    debitAccount: '1.1.02',
+    creditAccount: '4.1',
+    amount: 100000,
+    source: 'MANUAL',
+  },
+  {
+    id: '002',
+    date: '2026-01-10',
+    competence: '2026-01',
+    description: 'Pagamento de despesas operacionais',
+    debitAccount: '6.1',
+    creditAccount: '1.1.01',
+    amount: 10000,
+    source: 'MANUAL',
+  },
+]
 
 export default function DMPLReconciliationPage() {
   const d = buildDmpl(sampleJournal, 250000, -20000, 0)
