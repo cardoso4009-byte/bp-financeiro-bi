@@ -5,47 +5,52 @@ import type { JournalEntry } from '@/lib/accounting-core'
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 
-// Dados demonstrativos no mesmo formato do motor contábil central.
+// O Diário usa o formato oficial do accounting-core: linhas de débito e crédito.
+// O exemplo mantém a ponte da DMPL reconciliada: 250.000 + 90.000 - 20.000 = 320.000.
 const sampleJournal: JournalEntry[] = [
   {
     id: '000',
     date: '2026-01-02',
     competence: '2026-01',
     description: 'Integralização de capital social',
-    debitAccount: '1.1.01',
-    creditAccount: '3.1',
-    amount: 250000,
     source: 'MANUAL',
+    lines: [
+      { account: '1.1.01', debit: 250000, credit: 0 },
+      { account: '3.1', debit: 0, credit: 250000 },
+    ],
   },
   {
     id: '001',
     date: '2026-01-05',
     competence: '2026-01',
     description: 'Reconhecimento de receita de vendas',
-    debitAccount: '1.1.02',
-    creditAccount: '4.1',
-    amount: 100000,
     source: 'MANUAL',
+    lines: [
+      { account: '1.1.02', debit: 100000, credit: 0 },
+      { account: '4.1', debit: 0, credit: 100000 },
+    ],
   },
   {
     id: '002',
     date: '2026-01-10',
     competence: '2026-01',
     description: 'Pagamento de despesas operacionais',
-    debitAccount: '6.1',
-    creditAccount: '1.1.01',
-    amount: 10000,
     source: 'MANUAL',
+    lines: [
+      { account: '6.1', debit: 10000, credit: 0 },
+      { account: '1.1.01', debit: 0, credit: 10000 },
+    ],
   },
   {
     id: '003',
     date: '2026-01-20',
     competence: '2026-01',
     description: 'Distribuição de dividendos',
-    debitAccount: '3.3',
-    creditAccount: '1.1.01',
-    amount: 20000,
     source: 'MANUAL',
+    lines: [
+      { account: '3.2', debit: 20000, credit: 0 },
+      { account: '1.1.01', debit: 0, credit: 20000 },
+    ],
   },
 ]
 
