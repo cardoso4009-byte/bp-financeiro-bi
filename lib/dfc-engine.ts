@@ -1,31 +1,13 @@
-import { chartOfAccounts, type JournalEntry } from './accounting-core'
-import { sampleJournal as legacySampleJournal } from './contabil-model'
+import { chartOfAccounts, sampleJournal, type JournalEntry } from './accounting-core'
 import { buildTrialBalance } from './trial-balance-engine'
 import type { AnalysisPeriod } from './period-engine'
 
- type FlowCategory = 'operational' | 'investment' | 'financing'
+type FlowCategory = 'operational' | 'investment' | 'financing'
 
 function classifyCounterpart(code: string): FlowCategory {
   if (code.startsWith('1.2')) return 'investment'
   if (code.startsWith('2.2') || code.startsWith('3.')) return 'financing'
   return 'operational'
-}
-
-function toCentralJournal(entries: typeof legacySampleJournal): JournalEntry[] {
-  return entries.map((entry) => {
-    const debit = entry.lines.find((line) => line.debit > 0)
-    const credit = entry.lines.find((line) => line.credit > 0)
-    return {
-      id: entry.id,
-      date: entry.date,
-      competence: entry.date.slice(0, 7),
-      description: entry.description,
-      debitAccount: debit?.account ?? '',
-      creditAccount: credit?.account ?? '',
-      amount: debit?.debit ?? credit?.credit ?? 0,
-      source: 'MANUAL',
-    }
-  })
 }
 
 export type CashFlowEvidence = {
@@ -37,7 +19,7 @@ export type CashFlowEvidence = {
   category: FlowCategory
 }
 
-const defaultJournal = toCentralJournal(legacySampleJournal)
+const defaultJournal: JournalEntry[] = sampleJournal
 
 function inPeriod(competence: string, period: AnalysisPeriod) {
   return competence >= period.start.slice(0, 7) && competence <= period.end.slice(0, 7)
@@ -48,7 +30,9 @@ function beforePeriod(competence: string, period: AnalysisPeriod) {
 }
 
 export function cashFlowEngine(entries: JournalEntry[] = defaultJournal, period?: AnalysisPeriod) {
-  const periodEntries = period ? entries.filter((entry) => inPeriod(entry.competence || entry.date.slice(0, 7), period)) : entries
+  const periodEntries = period
+    ? entries.filter((entry) => inPeriod(entry.competence || entry.date.slice(0, 7), period))
+    : entries
   const cumulativeEntries = period
     ? entries.filter((entry) => (entry.competence || entry.date.slice(0, 7)) <= period.end.slice(0, 7))
     : entries
@@ -66,12 +50,13 @@ export function cashFlowEngine(entries: JournalEntry[] = defaultJournal, period?
   const errors: string[] = [...trial.errors]
 
   for (const entry of periodEntries) {
-    const isCashDebit = entry.debitAccount === cashCode
-    const isCashCredit = entry.creditAccount === cashCode
-    if (!isCashDebit && !isCashCredit) continue
+    const cashDebit = entry.lines.find((line) => line.account === cashCode && Number(line.debit) > 0)
+    const cashCredit = entry.lines.find((line) => line.account === cashCode && Number(line.credit) > 0)
+    if (!cashDebit && !cashCredit) continue
 
-    const cashEffect = isCashDebit ? entry.amount : -entry.amount
-    const counterpartCode = isCashDebit ? entry.creditAccount : entry.debitAccount
+    const cashEffect = cashDebit ? Number(cashDebit.debit) : -Number(cashCredit?.credit || 0)
+    const counterpart = entry.lines.find((line) => line.account !== cashCode)
+    const counterpartCode = counterpart?.account ?? ''
 
     if (!counterpartCode) {
       errors.push(`${entry.id}: movimento de caixa sem contrapartida identificada.`)
@@ -93,10 +78,10 @@ export function cashFlowEngine(entries: JournalEntry[] = defaultJournal, period?
     })
   }
 
-  const initialCash = openingTrial.rows.find(row => row.code === cashCode)?.balance ?? 0
+  const initialCash = openingTrial.rows.find((row) => row.code === cashCode)?.balance ?? 0
   const variation = operational + investment + financing
   const finalCash = initialCash + variation
-  const balanceCash = trial.rows.find(row => row.code === cashCode)?.balance ?? 0
+  const balanceCash = trial.rows.find((row) => row.code === cashCode)?.balance ?? 0
   const reconciliation = finalCash - balanceCash
 
   return {
