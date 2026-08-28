@@ -1,5 +1,5 @@
-import { JournalEntry, sampleJournal } from './contabil-model'
-import { buildLedger } from './razao-balancete'
+import { JournalEntry, sampleJournal, chartOfAccounts } from './accounting-core'
+import { buildTrialBalance } from './trial-balance-engine'
 
 type FlowCategory = 'operational' | 'investment' | 'financing'
 
@@ -19,28 +19,27 @@ export type CashFlowEvidence = {
 }
 
 export function cashFlowEngine(entries: JournalEntry[] = sampleJournal) {
-  const ledger = buildLedger(entries)
+  const trial = buildTrialBalance(entries, chartOfAccounts)
   const cashCode = '1.1.01'
   let operational = 0
   let investment = 0
   let financing = 0
   const evidence: CashFlowEvidence[] = []
-  const errors: string[] = []
+  const errors: string[] = [...trial.errors]
 
   for (const entry of entries) {
-    const cashLines = entry.lines.filter(line => line.account === cashCode)
-    if (!cashLines.length) continue
+    const isCashDebit = entry.debitAccount === cashCode
+    const isCashCredit = entry.creditAccount === cashCode
+    if (!isCashDebit && !isCashCredit) continue
 
-    const cashEffect = cashLines.reduce((sum, line) => sum + line.debit - line.credit, 0)
-    const counterpartCodes = [...new Set(entry.lines.filter(line => line.account !== cashCode).map(line => line.account))]
+    const cashEffect = isCashDebit ? entry.amount : -entry.amount
+    const counterpartCodes = [isCashDebit ? entry.creditAccount : entry.debitAccount]
 
-    if (counterpartCodes.length === 0) {
+    if (counterpartCodes.length === 0 || !counterpartCodes[0]) {
       errors.push(`${entry.id}: movimento de caixa sem contrapartida identificada.`)
       continue
     }
 
-    // Um lançamento de caixa é classificado uma única vez pela contrapartida.
-    // Isso evita multiplicar o efeito quando um lançamento tiver mais de uma linha não-caixa.
     const category = classifyCounterpart(counterpartCodes[0])
     if (category === 'investment') investment += cashEffect
     else if (category === 'financing') financing += cashEffect
@@ -61,7 +60,7 @@ export function cashFlowEngine(entries: JournalEntry[] = sampleJournal) {
   const initialCash = 0
   const variation = operational + investment + financing
   const finalCash = initialCash + variation
-  const balanceCash = ledger.find(row => row.code === cashCode)?.balance ?? 0
+  const balanceCash = trial.rows.find(row => row.code === cashCode)?.balance ?? 0
   const reconciliation = finalCash - balanceCash
 
   return {
