@@ -1,5 +1,6 @@
 import { chartOfAccounts, entryTotals, type JournalEntry } from './accounting-core'
 import type { FinancialEntry } from './lancamentos-data'
+import { FINANCIAL_STORAGE_KEY, readFinancialSource } from './financial-source'
 
 export type IntegrationResult = {
   entries: JournalEntry[]
@@ -77,16 +78,18 @@ export function financialEntriesToJournal(entries: FinancialEntry[]): Integratio
   return { entries: journal, errors }
 }
 
-export function journalFromLocalStorage(storageKey = 'bp-financeiro-lancamentos'): IntegrationResult {
+/**
+ * Ponto único de integração entre a base financeira e o Diário.
+ * O parâmetro é mantido apenas por compatibilidade; a chave oficial agora
+ * pertence ao módulo financial-source.
+ */
+export function journalFromLocalStorage(storageKey = FINANCIAL_STORAGE_KEY): IntegrationResult {
   if (typeof window === 'undefined') return { entries: [], errors: [] }
 
-  try {
-    const raw = window.localStorage.getItem(storageKey)
-    if (!raw) return { entries: [], errors: [] }
-    const entries = JSON.parse(raw) as FinancialEntry[]
-    if (!Array.isArray(entries)) return { entries: [], errors: ['Base financeira inválida.'] }
-    return financialEntriesToJournal(entries)
-  } catch {
-    return { entries: [], errors: ['Não foi possível ler a base financeira do navegador.'] }
+  const source = readFinancialSource()
+  const result = financialEntriesToJournal(source.entries)
+  return {
+    entries: result.entries,
+    errors: [...source.errors, ...result.errors],
   }
 }
