@@ -67,7 +67,7 @@ function toStatement(item: MonthlyFinancial): Record<DRELineKey, number> {
   }
 }
 
-function budgetStatement(item: ReturnType<typeof budgetData[number]>): Record<DRELineKey, number> {
+function budgetStatement(item: (typeof budgetData)[number]): Record<DRELineKey, number> {
   const receitaLiquida = item.receitaLiquida
   const lucroBruto = item.lucroBruto
   const custos = lucroBruto - receitaLiquida
