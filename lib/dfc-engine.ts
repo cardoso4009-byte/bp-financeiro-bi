@@ -1,8 +1,9 @@
 import { chartOfAccounts, type JournalEntry } from './accounting-core'
 import { sampleJournal as legacySampleJournal } from './contabil-model'
 import { buildTrialBalance } from './trial-balance-engine'
+import type { AnalysisPeriod } from './period-engine'
 
-type FlowCategory = 'operational' | 'investment' | 'financing'
+ type FlowCategory = 'operational' | 'investment' | 'financing'
 
 function classifyCounterpart(code: string): FlowCategory {
   if (code.startsWith('1.2')) return 'investment'
@@ -38,8 +39,25 @@ export type CashFlowEvidence = {
 
 const defaultJournal = toCentralJournal(legacySampleJournal)
 
-export function cashFlowEngine(entries: JournalEntry[] = defaultJournal) {
-  const trial = buildTrialBalance(entries, chartOfAccounts)
+function inPeriod(competence: string, period: AnalysisPeriod) {
+  return competence >= period.start.slice(0, 7) && competence <= period.end.slice(0, 7)
+}
+
+function beforePeriod(competence: string, period: AnalysisPeriod) {
+  return competence < period.start.slice(0, 7)
+}
+
+export function cashFlowEngine(entries: JournalEntry[] = defaultJournal, period?: AnalysisPeriod) {
+  const periodEntries = period ? entries.filter((entry) => inPeriod(entry.competence || entry.date.slice(0, 7), period)) : entries
+  const cumulativeEntries = period
+    ? entries.filter((entry) => (entry.competence || entry.date.slice(0, 7)) <= period.end.slice(0, 7))
+    : entries
+  const openingEntries = period
+    ? entries.filter((entry) => beforePeriod(entry.competence || entry.date.slice(0, 7), period))
+    : []
+
+  const trial = buildTrialBalance(cumulativeEntries, chartOfAccounts)
+  const openingTrial = buildTrialBalance(openingEntries, chartOfAccounts)
   const cashCode = '1.1.01'
   let operational = 0
   let investment = 0
@@ -47,7 +65,7 @@ export function cashFlowEngine(entries: JournalEntry[] = defaultJournal) {
   const evidence: CashFlowEvidence[] = []
   const errors: string[] = [...trial.errors]
 
-  for (const entry of entries) {
+  for (const entry of periodEntries) {
     const isCashDebit = entry.debitAccount === cashCode
     const isCashCredit = entry.creditAccount === cashCode
     if (!isCashDebit && !isCashCredit) continue
@@ -75,9 +93,7 @@ export function cashFlowEngine(entries: JournalEntry[] = defaultJournal) {
     })
   }
 
-  // O saldo inicial será parametrizado quando houver períodos reais persistidos.
-  // No modelo demonstrativo, o Diário começa no próprio período.
-  const initialCash = 0
+  const initialCash = openingTrial.rows.find(row => row.code === cashCode)?.balance ?? 0
   const variation = operational + investment + financing
   const finalCash = initialCash + variation
   const balanceCash = trial.rows.find(row => row.code === cashCode)?.balance ?? 0
