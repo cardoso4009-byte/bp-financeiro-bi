@@ -15,18 +15,17 @@ export type DmplResult = {
 
 /**
  * Calcula a ponte do patrimônio líquido a partir do balancete.
- * O resultado do período ainda pode não estar encerrado em Lucros Acumulados;
- * por isso o PL contábil considerado na reconciliação soma o saldo das contas
- * de PL ao lucro líquido do período. Diferenças permanecem explícitas.
+ * As classificações contábeis vêm do campo `class` do modelo central.
  */
 export function buildDmpl(entries: JournalEntry[], plInicial: number, dividendos = 0, outrosMovimentos = 0): DmplResult {
   const trial = buildTrialBalance(entries, chartOfAccounts)
+
   const lucroLiquido = trial.rows
-    .filter(row => row.type === 'RECEITA' || row.type === 'CUSTO' || row.type === 'DESPESA')
-    .reduce((sum, row) => sum + (row.type === 'RECEITA' ? row.balance : -row.balance), 0)
+    .filter(row => row.class === 'receita' || row.class === 'custo' || row.class === 'despesa')
+    .reduce((sum, row) => sum + (row.class === 'receita' ? row.balance : -row.balance), 0)
 
   const plLedger = trial.rows
-    .filter(row => row.type === 'PL')
+    .filter(row => row.class === 'patrimonio')
     .reduce((sum, row) => sum + row.balance, 0)
 
   const plContabil = plLedger + lucroLiquido
@@ -34,7 +33,7 @@ export function buildDmpl(entries: JournalEntry[], plInicial: number, dividendos
   const diferenca = plCalculado - plContabil
 
   const evidence = trial.rows
-    .filter(row => row.type === 'PL' || row.type === 'RECEITA' || row.type === 'CUSTO' || row.type === 'DESPESA')
+    .filter(row => row.class === 'patrimonio' || row.class === 'receita' || row.class === 'custo' || row.class === 'despesa')
     .filter(row => Math.abs(row.balance) >= 0.01)
     .map(row => `${row.code} ${row.name}: ${row.balance}`)
 
