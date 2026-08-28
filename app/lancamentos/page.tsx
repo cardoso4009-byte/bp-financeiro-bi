@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { entryTypes, initialEntries, summarizeEntries, type FinancialEntry } from '@/lib/lancamentos-data'
+import { FINANCIAL_STORAGE_KEY, readFinancialSource, writeFinancialSource } from '@/lib/financial-source'
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 const money = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -13,17 +14,19 @@ const emptyForm = {
 
 export default function Lancamentos() {
   const [entries, setEntries] = useState<FinancialEntry[]>(initialEntries)
+  const [sourceWarning, setSourceWarning] = useState('')
   const [form, setForm] = useState(emptyForm)
   const [filter, setFilter] = useState('Todos')
   const [search, setSearch] = useState('')
 
   useEffect(() => {
-    const saved = localStorage.getItem('bp-financeiro-lancamentos')
-    if (saved) setEntries(JSON.parse(saved))
+    const source = readFinancialSource()
+    setEntries(source.entries)
+    setSourceWarning(source.errors.join(' '))
   }, [])
 
   useEffect(() => {
-    localStorage.setItem('bp-financeiro-lancamentos', JSON.stringify(entries))
+    writeFinancialSource(entries)
   }, [entries])
 
   const filtered = useMemo(() => entries.filter(e => {
@@ -56,6 +59,8 @@ export default function Lancamentos() {
       <Card title="Em aberto" value={s.open} sub="A pagar / receber" />
     </div>
 
+    {sourceWarning && <div className="note" style={{ marginBottom: 16, borderLeft: '4px solid #c33' }}><strong>Atenção à base:</strong> {sourceWarning}</div>}
+
     <div className="grid">
       <section className="panel"><div className="panel-title"><h2>Novo lançamento</h2><span>Entrada manual</span></div>
         <div className="entry-form">
@@ -80,7 +85,7 @@ export default function Lancamentos() {
           <div className="row"><span>Itens em aberto</span><b>{entries.filter(e=>e.status==='Em aberto').length}</b></div>
           <div className="row"><span>Total de lançamentos</span><b>{entries.length}</b></div>
         </div>
-        <div className="note">A base está preparada para ser a origem dos módulos de DRE, DFC, Capital de Giro e Fluxo de Caixa. Nesta versão, os dados são persistidos no navegador por <strong>localStorage</strong>.</div>
+        <div className="note">Fonte única de dados: <strong>{FINANCIAL_STORAGE_KEY}</strong>. A base financeira alimenta a integração contábil e será a origem dos demonstrativos.</div>
       </section>
     </div>
 
@@ -91,7 +96,7 @@ export default function Lancamentos() {
       </tbody></table></div>
     </section>
 
-    <section className="panel"><div className="panel-title"><h2>Integração planejada</h2><span>Arquitetura</span></div><div className="note"><strong>Base de Lançamentos → classificação contábil/gerencial → DRE → Balanço → DFC → Capital de Giro → Fluxo de Caixa → Indicadores → Diagnóstico.</strong> O próximo refinamento será substituir os dados demonstrativos dos módulos por agregações desta base.</div></section>
+    <section className="panel"><div className="panel-title"><h2>Próxima integração</h2><span>Arquitetura</span></div><div className="note"><strong>Base de Lançamentos → classificação contábil → Diário → Razão → Balancete → DRE / BP / DFC / DMPL → Indicadores → Diagnóstico.</strong> A camada de origem já está centralizada; agora vamos substituir os demonstrativos paralelos pelo Diário integrado de forma controlada.</div></section>
   </main>
 }
 
