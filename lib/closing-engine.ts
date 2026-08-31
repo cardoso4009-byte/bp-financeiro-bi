@@ -1,12 +1,12 @@
 import { statementEngine } from './statement-engine'
 import { cashFlowEngine } from './dfc-engine'
 import { buildTrialBalance } from './razao-balancete'
-import { journalIsBalanced, sampleJournal } from './contabil-model'
+import { journalIsBalanced, sampleJournal } from './accounting-core'
 
 export function closingEngine() {
   const s = statementEngine()
   const c = cashFlowEngine()
-  const trial = buildTrialBalance()
+  const trial = buildTrialBalance(sampleJournal)
   const journal = journalIsBalanced(sampleJournal)
   const result = s.totals.resultadoPeriodo
   const bpDifference = s.totals.ativo - (s.totals.passivo + s.totals.patrimonio)
