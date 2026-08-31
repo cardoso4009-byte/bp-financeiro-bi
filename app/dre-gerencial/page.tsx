@@ -1,4 +1,10 @@
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
 import { statementEngine } from '@/lib/statement-engine'
+import { financialEntriesToJournal } from '@/lib/financial-accounting-integration'
+import { readFinancialSource } from '@/lib/financial-source'
+import { initialEntries, type FinancialEntry } from '@/lib/lancamentos-data'
 
 const brl = (n:number) => n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0})
 const pct = (n:number) => `${n.toFixed(1).replace('.',',')}%`
@@ -6,7 +12,17 @@ const pct = (n:number) => `${n.toFixed(1).replace('.',',')}%`
 type Row = { code:string; name:string; value:number; level:number; children?:Row[] }
 
 export default function DREGerencial() {
-  const { dre, totals } = statementEngine()
+  const [entries, setEntries] = useState<FinancialEntry[]>(initialEntries)
+  const [sourceErrors, setSourceErrors] = useState<string[]>([])
+
+  useEffect(() => {
+    const source = readFinancialSource()
+    setEntries(source.entries)
+    setSourceErrors(source.errors)
+  }, [])
+
+  const integration = useMemo(() => financialEntriesToJournal(entries), [entries])
+  const { dre, totals } = useMemo(() => statementEngine(integration.entries), [integration.entries])
   const grouped = buildRows(dre)
   const receita = totals.receitas
   const custos = totals.custos
@@ -30,7 +46,7 @@ export default function DREGerencial() {
     </div>
 
     <section className="panel wide">
-      <div className="panel-title"><h2>DRE detalhada — visão hierárquica</h2><span>Origem: Razão + Mapeamento Contábil</span></div>
+      <div className="panel-title"><h2>DRE detalhada — visão hierárquica</h2><span>Origem: Base financeira → Diário → Razão → Mapeamento Contábil</span></div>
       <table><thead><tr><th style={{textAlign:'left'}}>Conta</th><th>Realizado</th><th>% Receita</th></tr></thead><tbody>
         <Section label="Receita Líquida" value={receita} pct={1}/>
         {grouped.filter(r=>r.code.startsWith('4')).map(r=><Detail key={r.code} row={r} base={receita}/>) }
@@ -44,7 +60,8 @@ export default function DREGerencial() {
         {grouped.filter(r=>r.code.startsWith('6.2')).map(r=><Detail key={r.code} row={r} base={receita} negative/>) }
         <Subtotal label="Lucro Líquido" value={lucroLiquido} pct={margemLiq}/>
       </tbody></table>
-      <div className="note" style={{marginTop:14}}>As contas são abertas por código contábil e calculadas diretamente do Razão. Alterações nos lançamentos passam a refletir nesta demonstração através do motor integrado. O detalhamento por lançamento será a próxima camada do drill-down.</div>
+      <div className="note" style={{marginTop:14}}>Os valores são calculados a partir da Base de Lançamentos, convertida em partidas dobradas e processada pelo Diário/Razão. Alterações nos lançamentos passam a refletir nesta demonstração através do motor integrado.</div>
+      {(sourceErrors.length > 0 || integration.errors.length > 0) && <div className="note" style={{marginTop:10,borderLeft:'4px solid #d92d20'}}><strong>Atenção:</strong> {[...sourceErrors, ...integration.errors].join(' ')}</div>}
     </section>
 
     <section className="panel"><div className="panel-title"><h2>Orçado × Realizado</h2><span>Visão gerencial</span></div>
