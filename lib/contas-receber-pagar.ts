@@ -22,11 +22,13 @@ export function agingBucket(daysOverdue: number): AgingBucket {
 }
 
 export function openReceivablesPayables(entries: FinancialEntry[], asOf = '2026-12-31'): OpenItem[] {
-  return entries.filter(e => e.status === 'Em aberto' && (e.type === 'Receita' || e.type === 'Despesa')).map(e => {
-    const direction = e.type === 'Receita' ? 'Receber' : 'Pagar'
-    const due = diffDays(asOf, e.dueDate)
-    return { ...e, direction, daysOverdue: Math.max(0, due), aging: agingBucket(due) }
-  })
+  return entries
+    .filter(e => e.status === 'Em aberto' && ['Receita', 'Despesa', 'CAPEX', 'Financiamento'].includes(e.type))
+    .map(e => {
+      const direction = e.type === 'Receita' ? 'Receber' : 'Pagar'
+      const due = diffDays(asOf, e.dueDate)
+      return { ...e, direction, daysOverdue: Math.max(0, due), aging: agingBucket(due) }
+    })
 }
 
 export function agingSummary(items: OpenItem[]) {
