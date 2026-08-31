@@ -1,8 +1,9 @@
 import { buildLedger } from './razao-balancete'
 import { mappingFor } from './account-mapping'
+import type { JournalEntry } from './accounting-core'
 
-export function statementEngine() {
-  const ledger = buildLedger()
+export function statementEngine(entries: JournalEntry[] = []) {
+  const ledger = buildLedger(entries)
   const mapped = ledger.map(row => ({ ...row, mapping: mappingFor(row.code) }))
   const bp = mapped.filter(r => r.mapping?.statements.includes('BP'))
   const dre = mapped.filter(r => r.mapping?.statements.includes('DRE'))
@@ -17,7 +18,6 @@ export function statementEngine() {
 
   // Enquanto o exercício estiver aberto, o resultado ainda não foi encerrado
   // para Lucros/Prejuízos Acumulados no Razão. No BP, porém, ele compõe o PL.
-  // Portanto o motor integra o resultado do período ao patrimônio apresentado.
   const resultadoPeriodo = receitas - custos - despesas
   const patrimonio = patrimonioRegistrado + resultadoPeriodo
 
