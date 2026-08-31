@@ -47,15 +47,12 @@ export default function DREGerencial() {
 
   const toggle = (code:string) => setExpanded(prev => {
     const next = new Set(prev)
-    next.has(code) ? next.delete(code) : next.add(code)
+    if (next.has(code)) next.delete(code)
+    else next.add(code)
     return next
   })
 
   const dreGroups = useMemo(() => buildDreHierarchy(accountBalances), [accountBalances])
-  const allDrillCodes = useMemo(() => collectRowCodes(dreGroups), [dreGroups])
-
-  const expandAll = () => setExpanded(new Set(allDrillCodes))
-  const collapseAll = () => setExpanded(new Set())
 
   return <main className="content" style={{marginLeft:0,width:'100%',maxWidth:1450,margin:'0 auto'}}>
     <header><div><small>CONTROLADORIA FINANCEIRA</small><h1>DRE Gerencial</h1><p>Demonstração detalhada • Orçado × Realizado • Regime de competência</p></div><div className="period">Jan–Dez 2026</div></header>
@@ -72,10 +69,8 @@ export default function DREGerencial() {
         <span>Origem: Base financeira → Diário → Razão → Mapeamento Contábil</span>
       </div>
 
-      <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}}>
-        <button type="button" onClick={expandAll} style={buttonStyle} aria-label="Expandir todas as contas">Expandir contas</button>
-        <button type="button" onClick={collapseAll} style={buttonStyle} aria-label="Recolher todas as contas">Recolher</button>
-        <span style={{fontSize:12,color:'#667085',alignSelf:'center'}}>Conta → subconta → lançamentos do Diário</span>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12,flexWrap:'wrap'}}>
+        <span style={{fontSize:12,color:'#667085'}}>Padrão de navegação: <strong>+</strong> expandir • <strong>−</strong> recolher</span>
       </div>
 
       <table><thead><tr><th style={{textAlign:'left'}}>Conta</th><th>Realizado</th><th>% Receita</th></tr></thead><tbody>
@@ -117,16 +112,21 @@ function buildDreHierarchy(balances:Map<string,number>):Row[] {
     })
 }
 
-function collectRowCodes(rows:Row[]):string[] {
-  return rows.flatMap(row => [row.code, ...(row.children ? collectRowCodes(row.children) : [])])
+function ExpandIcon({open, onClick, label}:{open:boolean;onClick:()=>void;label:string}) {
+  return <button
+    type="button"
+    className="expand-btn"
+    aria-label={open ? `Recolher ${label}` : `Expandir ${label}`}
+    onClick={(event)=>{event.stopPropagation();onClick()}}
+  >{open ? '−' : '+'}</button>
 }
 
 function DrillRow({row,base,negative=false,journal,expanded,toggle}:{row:Row;base:number;negative?:boolean;journal:JournalEntry[];expanded:Set<string>;toggle:(code:string)=>void}) {
   const open = expanded.has(row.code)
   const value = statementValue(row.value, negative)
   return <>
-    <tr onClick={() => toggle(row.code)} style={{cursor:'pointer'}} aria-expanded={open}>
-      <td style={{fontWeight:700}}><span style={{display:'inline-block',width:18}}>{open ? '▾' : '▸'}</span>{row.code} — {row.name}</td>
+    <tr className="group-row" onClick={() => toggle(row.code)} style={{cursor:'pointer'}}>
+      <td style={{fontWeight:700}}><ExpandIcon open={open} onClick={()=>toggle(row.code)} label={`${row.code} — ${row.name}`}/>{row.code} — {row.name}</td>
       <td style={{fontWeight:700}}>{brl(value)}</td>
       <td style={{fontWeight:700}}>{base ? Math.abs(value/base).toLocaleString('pt-BR',{style:'percent',minimumFractionDigits:1,maximumFractionDigits:1}) : '—'}</td>
     </tr>
@@ -139,8 +139,8 @@ function DrillChild({row,base,negative,journal,expanded,toggle}:{row:Row;base:nu
   const value = statementValue(row.value, negative)
   const movements = journal.filter(entry => entry.lines.some(line => line.account === row.code))
   return <>
-    <tr onClick={() => toggle(row.code)} style={{cursor:'pointer',background:'#fafbfc'}} aria-expanded={open}>
-      <td style={{paddingLeft:36}}><span style={{display:'inline-block',width:18}}>{open ? '▾' : '▸'}</span>↳ {row.code} — {row.name}</td>
+    <tr className="item-row" onClick={() => toggle(row.code)} style={{cursor:'pointer',background:'#fafbfc'}}>
+      <td style={{paddingLeft:36}}><ExpandIcon open={open} onClick={()=>toggle(row.code)} label={`${row.code} — ${row.name}`}/>{row.code} — {row.name}</td>
       <td>{brl(value)}</td>
       <td>{base ? Math.abs(value/base).toLocaleString('pt-BR',{style:'percent',minimumFractionDigits:1,maximumFractionDigits:1}) : '—'}</td>
     </tr>
