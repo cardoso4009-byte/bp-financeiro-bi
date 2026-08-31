@@ -2,6 +2,7 @@ import './globals.css'
 import './navigation-sections.css'
 import type { Metadata } from 'next'
 import NavigationActions from './components/navigation-actions'
+import AgingExecutiveAlerts from './components/aging-executive-alerts'
 
 export const metadata: Metadata = {
   title: 'BP Financeiro BI',
@@ -9,5 +10,5 @@ export const metadata: Metadata = {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <html lang="pt-BR"><body><NavigationActions />{children}</body></html>
+  return <html lang="pt-BR"><body><NavigationActions /><AgingExecutiveAlerts />{children}</body></html>
 }
