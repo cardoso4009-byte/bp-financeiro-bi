@@ -52,6 +52,10 @@ export default function DREGerencial() {
   })
 
   const dreGroups = useMemo(() => buildDreHierarchy(accountBalances), [accountBalances])
+  const allDrillCodes = useMemo(() => collectRowCodes(dreGroups), [dreGroups])
+
+  const expandAll = () => setExpanded(new Set(allDrillCodes))
+  const collapseAll = () => setExpanded(new Set())
 
   return <main className="content" style={{marginLeft:0,width:'100%',maxWidth:1450,margin:'0 auto'}}>
     <header><div><small>CONTROLADORIA FINANCEIRA</small><h1>DRE Gerencial</h1><p>Demonstração detalhada • Orçado × Realizado • Regime de competência</p></div><div className="period">Jan–Dez 2026</div></header>
@@ -69,8 +73,8 @@ export default function DREGerencial() {
       </div>
 
       <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}}>
-        <button onClick={() => setExpanded(new Set(dreGroups.flatMap(r => [r.code,...(r.children||[]).map(c=>c.code)])))} style={buttonStyle}>Expandir contas</button>
-        <button onClick={() => setExpanded(new Set())} style={buttonStyle}>Recolher</button>
+        <button type="button" onClick={expandAll} style={buttonStyle} aria-label="Expandir todas as contas">Expandir contas</button>
+        <button type="button" onClick={collapseAll} style={buttonStyle} aria-label="Recolher todas as contas">Recolher</button>
         <span style={{fontSize:12,color:'#667085',alignSelf:'center'}}>Conta → subconta → lançamentos do Diário</span>
       </div>
 
@@ -113,11 +117,15 @@ function buildDreHierarchy(balances:Map<string,number>):Row[] {
     })
 }
 
+function collectRowCodes(rows:Row[]):string[] {
+  return rows.flatMap(row => [row.code, ...(row.children ? collectRowCodes(row.children) : [])])
+}
+
 function DrillRow({row,base,negative=false,journal,expanded,toggle}:{row:Row;base:number;negative?:boolean;journal:JournalEntry[];expanded:Set<string>;toggle:(code:string)=>void}) {
   const open = expanded.has(row.code)
   const value = statementValue(row.value, negative)
   return <>
-    <tr onClick={() => toggle(row.code)} style={{cursor:'pointer'}}>
+    <tr onClick={() => toggle(row.code)} style={{cursor:'pointer'}} aria-expanded={open}>
       <td style={{fontWeight:700}}><span style={{display:'inline-block',width:18}}>{open ? '▾' : '▸'}</span>{row.code} — {row.name}</td>
       <td style={{fontWeight:700}}>{brl(value)}</td>
       <td style={{fontWeight:700}}>{base ? Math.abs(value/base).toLocaleString('pt-BR',{style:'percent',minimumFractionDigits:1,maximumFractionDigits:1}) : '—'}</td>
@@ -131,7 +139,7 @@ function DrillChild({row,base,negative,journal,expanded,toggle}:{row:Row;base:nu
   const value = statementValue(row.value, negative)
   const movements = journal.filter(entry => entry.lines.some(line => line.account === row.code))
   return <>
-    <tr onClick={() => toggle(row.code)} style={{cursor:'pointer',background:'#fafbfc'}}>
+    <tr onClick={() => toggle(row.code)} style={{cursor:'pointer',background:'#fafbfc'}} aria-expanded={open}>
       <td style={{paddingLeft:36}}><span style={{display:'inline-block',width:18}}>{open ? '▾' : '▸'}</span>↳ {row.code} — {row.name}</td>
       <td>{brl(value)}</td>
       <td>{base ? Math.abs(value/base).toLocaleString('pt-BR',{style:'percent',minimumFractionDigits:1,maximumFractionDigits:1}) : '—'}</td>
