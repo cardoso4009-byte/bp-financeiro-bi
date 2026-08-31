@@ -1,4 +1,5 @@
 import './globals.css'
+import './navigation-sections.css'
 import type { Metadata } from 'next'
 import NavigationActions from './components/navigation-actions'
 
