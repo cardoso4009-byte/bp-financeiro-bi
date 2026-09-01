@@ -3,6 +3,7 @@ import { statementEngine } from './statement-engine'
 import { cashFlowEngine } from './dfc-engine'
 import { chartOfAccounts, journalIsBalanced, sampleJournal } from './contabil-model'
 import { reconcileManagementBalance } from './balance-reconciliation'
+import { auditMonthlyBalance, firstBalanceIssue } from './bp-audit'
 
 export type AuditSeverity = 'critical' | 'warning' | 'info'
 type Evidence = { source:string; value:string; detail:string }
@@ -13,6 +14,8 @@ export function auditEngine(){
   const result=s.totals.receitas-s.totals.custos-s.totals.despesas
   const bpDiff=s.totals.ativo-(s.totals.passivo+s.totals.patrimonio)
   const managementBp=reconcileManagementBalance()
+  const monthlyBp=auditMonthlyBalance()
+  const firstMonthlyIssue=firstBalanceIssue(monthlyBp)
   const unbalancedEntries=sampleJournal.filter(entry=>{
     const debit=entry.lines.reduce((sum,line)=>sum+line.debit,0)
     const credit=entry.lines.reduce((sum,line)=>sum+line.credit,0)
@@ -37,6 +40,10 @@ export function auditEngine(){
       detail:`Ativo ${brl(managementBp.ativo)} − Passivo + PL ${brl(managementBp.passivo+managementBp.patrimonio)} = ${brl(managementBp.difference)}`,
       action:'Corrigir a base patrimonial gerencial antes de considerar o fechamento concluído.',
       evidence:[{source:'Ativo Total',value:brl(managementBp.ativo),detail:`Base gerencial ${managementBp.month}.`},{source:'Passivo Total',value:brl(managementBp.passivo),detail:`Base gerencial ${managementBp.month}.`},{source:'Patrimônio Líquido',value:brl(managementBp.patrimonio),detail:`Base gerencial ${managementBp.month}.`}] as Evidence[]},
+    {id:'bp-management-series',label:'Balanço gerencial: auditoria mensal',ok:!firstMonthlyIssue,severity:'critical' as AuditSeverity,
+      detail:firstMonthlyIssue?`Primeira inconsistência em ${firstMonthlyIssue.month}: diferença patrimonial ${brl(firstMonthlyIssue.bpDifference)}; composição AC ${brl(firstMonthlyIssue.acCompositionDifference)}; composição ANC ${brl(firstMonthlyIssue.ancCompositionDifference)}.`:'Todos os meses estão conciliados.',
+      action:'Localizar o primeiro mês inconsistente e corrigir a origem da série antes do fechamento.',
+      evidence:[{source:'Série gerencial',value:`${monthlyBp.length} meses`,detail:'Teste mês a mês da equação patrimonial e das composições do Ativo.'},{source:'Primeira exceção',value:firstMonthlyIssue?.month ?? 'Nenhuma',detail:firstMonthlyIssue?'O erro é rastreável ao primeiro período inconsistente.':'Não foram encontradas divergências.'}] as Evidence[]},
     {id:'cash',label:'DFC: Caixa final conciliado',ok:Math.abs(c.reconciliation)<0.01,severity:'critical' as AuditSeverity,
       detail:`Caixa final ${brl(c.finalCash)} − Razão ${brl(cashRow?.balance ?? 0)} = ${brl(c.reconciliation)}`,
       action:'Conciliar movimentações da DFC com Caixa e Bancos no Razão.',
@@ -47,6 +54,6 @@ export function auditEngine(){
       evidence:[{source:'Receitas',value:brl(s.totals.receitas),detail:'Contas classificadas como Receita na DRE.'},{source:'Custos',value:brl(s.totals.custos),detail:'Contas classificadas como Custo na DRE.'},{source:'Despesas',value:brl(s.totals.despesas),detail:'Contas classificadas como Despesa na DRE.'}] as Evidence[]},
   ]
   const pending=checks.filter(x=>!x.ok)
-  return {checks,pending,result,bpDiff,managementBpDifference:managementBp.difference,cashDiff:c.reconciliation,overall:pending.length===0,
+  return {checks,pending,result,bpDiff,managementBpDifference:managementBp.difference,monthlyBp,firstMonthlyIssue,cashDiff:c.reconciliation,overall:pending.length===0,
     summary:{critical:pending.filter(x=>x.severity==='critical').length,warning:pending.filter(x=>x.severity==='warning').length,info:pending.filter(x=>x.severity==='info').length}}
 }
