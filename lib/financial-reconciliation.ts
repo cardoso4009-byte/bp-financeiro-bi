@@ -41,7 +41,7 @@ const isOk = (difference: number) => Math.abs(difference) < TOLERANCE
 /** Zero Difference Gate for the 12-month management financial chain. */
 export function financialReconciliation() {
   const checks: FinancialReconciliationCheck[] = []
-  let previousPl = 0
+  let previousPl: number | null = null
 
   financialCore.forEach((core, i) => {
     const management = monthlyData[i]
@@ -77,8 +77,9 @@ export function financialReconciliation() {
     compare('bp-total-liabilities', 'Passivo total', balance.passivoCirculante + balance.outrosPassivos + balance.passivoNaoCirculante, balance.passivoTotal, 'PC + outros passivos + PNC × Passivo Total')
     compare('bp-equation', 'Equação patrimonial', balance.ativoTotal, balance.passivoTotal + balance.pl, 'Ativo = Passivo + Patrimônio Líquido')
 
-    const expectedPl = i === 0 ? balance.pl : previousPl + management.lucroLiquido
-    compare('dre-pl-movement', 'Movimentação do PL', expectedPl, balance.pl, 'Lucro líquido acumulado × Patrimônio Líquido')
+    if (previousPl !== null) {
+      compare('dre-pl-movement', 'Movimentação do PL', previousPl + management.lucroLiquido, balance.pl, 'PL anterior + lucro líquido do mês × PL atual')
+    }
     previousPl = balance.pl
   })
 
