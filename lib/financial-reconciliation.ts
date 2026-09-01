@@ -9,10 +9,7 @@ export type ReconciliationResult = {
   differences: string[]
 }
 
-/**
- * Cross-check used before connecting dashboards: the same financial source must
- * produce the same operational totals in every management view.
- */
+/** Cross-check used by management views: DRE and Rentabilidade must reconcile to the same source. */
 export function reconcileOperationalViews(entries: FinancialEntry[]): ReconciliationResult {
   const operational = entries.filter(e => e.type === 'Receita' || e.type === 'Despesa')
   const sourceRevenue = operational.filter(e => e.type === 'Receita').reduce((s,e) => s + Math.abs(e.value), 0)
@@ -22,12 +19,5 @@ export function reconcileOperationalViews(entries: FinancialEntry[]): Reconcilia
   if (!Number.isFinite(sourceRevenue)) differences.push('Receita contém valor inválido.')
   if (!Number.isFinite(sourceOpex)) differences.push('OPEX contém valor inválido.')
   if (!Number.isFinite(sourceResult)) differences.push('Resultado contém valor inválido.')
-  return {
-    sourceRevenue,
-    sourceOpex,
-    sourceResult,
-    entriesCount: operational.length,
-    balanced: differences.length === 0,
-    differences,
-  }
+  return { sourceRevenue, sourceOpex, sourceResult, entriesCount: operational.length, balanced: differences.length === 0, differences }
 }
