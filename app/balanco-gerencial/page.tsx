@@ -32,7 +32,7 @@ export default function BalancoGerencial(){
  const[base,setBase]=useState(11)
  const m=monthlyBalance[base]
  const prev=monthlyBalance[Math.max(0,base-1)]
- const variance=(a:number,b:number)=>b?((a-b)/Math.abs(b)*100):0
+ const variance=(a:number,b:number)=>b?((a-b)/Math.abs(b)):0
  const patrimonioCheck=m.ativoTotal-(m.passivoTotal+m.pl)
  const capitalGiro=m.ativoCirculante-m.passivoCirculante
  const prevCapitalGiro=prev.ativoCirculante-prev.passivoCirculante
@@ -57,7 +57,7 @@ export default function BalancoGerencial(){
      <div><span>Ativo Total</span><strong>{brl(m.ativoTotal)}</strong></div>
      <div><span>Passivo Total</span><strong>{brl(m.passivoTotal)}</strong></div>
      <div><span>Patrimônio Líquido</span><strong>{brl(m.pl)}</strong></div>
-     <div><span>Capital de Giro</span><strong>{brl(capitalGiro)}</strong></div>
+     <div><span>Capital de Giro Líquido</span><strong>{brl(capitalGiro)}</strong></div>
     </div>
 
     <section className="bp-card">
@@ -85,7 +85,7 @@ export default function BalancoGerencial(){
 
     <div className="bp-checks">
      <Check ok={Math.abs(patrimonioCheck)<1} label="Ativo = Passivo + PL" value={Math.abs(patrimonioCheck)<1?'Estrutura patrimonial conciliada':`Diferença: ${brl(patrimonioCheck)}`}/>
-     <Check ok={capitalGiro>=0} label="Capital de Giro Líquido" value={`${brl(capitalGiro)} • variação vs. mês anterior: ${pct(variance(capitalGiro,prevCapitalGiro))}`}/>
+     <Check ok={capitalGiro>=0} label={capitalGiro>=0?'Capital de Giro Líquido':'Capital de Giro Líquido Negativo'} value={`${brl(capitalGiro)} • ${capitalGiro>=0?'folga financeira de curto prazo':'necessidade de financiamento de curto prazo'} • variação vs. mês anterior: ${pct(variance(capitalGiro,prevCapitalGiro))}`}/>
     </div>
    </>}
 
