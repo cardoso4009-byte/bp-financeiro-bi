@@ -36,6 +36,7 @@ export default function BalancoGerencial(){
  const patrimonioCheck=m.ativoTotal-(m.passivoTotal+m.pl)
  const capitalGiro=m.ativoCirculante-m.passivoCirculante
  const prevCapitalGiro=prev.ativoCirculante-prev.passivoCirculante
+ const capitalGiroVariation=variance(capitalGiro,prevCapitalGiro)
  const rows=useMemo(()=>[
   ['Liquidez Corrente',m.ativoCirculante/m.passivoCirculante],
   ['Participação do PL',m.pl/m.ativoTotal],
@@ -85,13 +86,13 @@ export default function BalancoGerencial(){
 
     <div className="bp-checks">
      <Check ok={Math.abs(patrimonioCheck)<1} label="Ativo = Passivo + PL" value={Math.abs(patrimonioCheck)<1?'Estrutura patrimonial conciliada':`Diferença: ${brl(patrimonioCheck)}`}/>
-     <Check ok={capitalGiro>=0} label={capitalGiro>=0?'Capital de Giro Líquido':'Capital de Giro Líquido Negativo'} value={`${brl(capitalGiro)} • ${capitalGiro>=0?'folga financeira de curto prazo':'necessidade de financiamento de curto prazo'} • variação vs. mês anterior: ${pct(variance(capitalGiro,prevCapitalGiro))}`}/>
+     <Check ok={capitalGiro>=0} label={capitalGiro>=0?'Capital de Giro Líquido':'Capital de Giro Líquido Negativo'} value={`${brl(capitalGiro)} • ${capitalGiro>=0?'folga financeira de curto prazo':'necessidade de financiamento de curto prazo'} • variação vs. mês anterior: ${pct(capitalGiroVariation)}`}/>
     </div>
    </>}
 
-   {mode==='comparativo'&&<div className="bp-grid">{[['Ativo Total',m.ativoTotal,prev.ativoTotal],['Passivo Total',m.passivoTotal,prev.passivoTotal],['Patrimônio Líquido',m.pl,prev.pl],['Capital de Giro',capitalGiro,prevCapitalGiro]].map(([label,value,previous])=><div className="metric-card" key={label as string}><span>{label}</span><h2>{brl(value as number)}</h2><small>vs. mês anterior: {variance(value as number,previous as number)>=0?'+':''}{(variance(value as number,previous as number)*100).toFixed(1).replace('.',',')}%</small></div>)}</div>}
+   {mode==='comparativo'&&<div className="bp-grid">{[['Ativo Total',m.ativoTotal,prev.ativoTotal],['Passivo Total',m.passivoTotal,prev.passivoTotal],['Patrimônio Líquido',m.pl,prev.pl],['Capital de Giro Líquido',capitalGiro,prevCapitalGiro]].map(([label,value,previous])=><div className="metric-card" key={label as string}><span>{label}</span><h2>{brl(value as number)}</h2><small>vs. mês anterior: {variance(value as number,previous as number)>=0?'+':''}{(variance(value as number,previous as number)*100).toFixed(1).replace('.',',')}%</small></div>)}</div>}
 
-   {mode==='indicadores'&&<div className="indicator-grid">{rows.map(([label,value])=><div className="metric-card" key={label as string}><span>{label}</span><h2>{label==='Liquidez Corrente'?(value as number).toFixed(2):pct(value as number)}</h2><small>Data-base: {months[base]}/2026</small></div>)}<div className="metric-card"><span>Capital de Giro</span><h2>{brl(capitalGiro)}</h2><small>Ativo Circulante − Passivo Circulante</small></div></div>}
+   {mode==='indicadores'&&<div className="indicator-grid">{rows.map(([label,value])=><div className="metric-card" key={label as string}><span>{label}</span><h2>{label==='Liquidez Corrente'?(value as number).toFixed(2):pct(value as number)}</h2><small>Data-base: {months[base]}/2026</small></div>)}<div className="metric-card"><span>Capital de Giro Líquido</span><h2>{brl(capitalGiro)}</h2><small>Ativo Circulante − Passivo Circulante • {capitalGiro>=0?'folga':'necessidade de financiamento'}</small></div></div>}
   </div>
  </main>
 }
