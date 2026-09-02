@@ -1,10 +1,39 @@
-import {financialCore} from './financial-core'
+import {financialCore, openingBalance} from './financial-core'
+
 export type MonthlyFinancial={month:string;receitaBruta:number;deducoes:number;receitaLiquida:number;custos:number;lucroBruto:number;opex:number;ebitda:number;depreciacao:number;resultadoOperacional:number;resultadoFinanceiro:number;lucroLiquido:number;caixaOperacional:number;investimentos:number;financiamentos:number;caixaFinal:number}
-const months=financialCore.map(m=>m.month),depreciacoes=Array(12).fill(2500),financeiro=[-3000,-3000,-3000,-3000,-3000,-3000,-4000,-3000,-4000,-4000,-3000,-4000],impostos=[-3441,-3750,-4059,-3935,-4182,-4368,-4259,-4059,-4382,-4506,-4368,-4691],caixaOperacional=[8000,9000,10000,8000,10000,11000,12000,9000,11000,12000,10000,10000],investimentos=[-5000,-5000,-10000,-5000,-10000,-10000,-15000,-10000,-10000,-10000,-5000,-15000],financiamentos=[10000,0,0,0,20000,0,0,0,0,0,-20000,30000]
-let caixa=50000
-export const monthlyData:MonthlyFinancial[]=financialCore.map((m,i)=>{const receitaLiquida=m.revenue,custos=-m.cost,lucroBruto=receitaLiquida+m.cost*-1,opex=-m.opex,ebitda=lucroBruto+opex,resultadoOperacional=ebitda-depreciacoes[i],resultadoAntesIR=resultadoOperacional+financeiro[i],lucroLiquido=resultadoAntesIR+impostos[i];caixa+=caixaOperacional[i]+investimentos[i]+financiamentos[i];return{month:m.month,receitaBruta:m.revenue/0.9,deducoes:m.revenue/0.9*-0.1,receitaLiquida,custos,lucroBruto,opex,ebitda,depreciacao:depreciacoes[i],resultadoOperacional,resultadoFinanceiro:financeiro[i],lucroLiquido,caixaOperacional:caixaOperacional[i],investimentos:investimentos[i],financiamentos:financiamentos[i],caixaFinal:caixa}})
+
+const months=financialCore.map(m=>m.month)
+let caixa=openingBalance.cash
+
+export const monthlyData:MonthlyFinancial[]=financialCore.map((m,i)=>{
+  const dre={receitaLiquida:m.revenue,custos:-m.cost,lucroBruto:m.revenue-m.cost,opex:-m.opex,ebitda:m.revenue-m.cost-m.opex,resultadoOperacional:m.revenue-m.cost-m.opex-m.depreciation,lucroLiquido:m.revenue-m.cost-m.opex-m.depreciation+m.financialResult+m.taxes}
+  const caixaOperacional=m.cashIn-m.cashOut
+  const investimentos=-m.capex
+  const financiamentos=(i===0?m.debt-openingBalance.debt:m.debt-financialCore[i-1].debt)
+  caixa+=caixaOperacional+investimentos+financiamentos
+  return{month:m.month,receitaBruta:m.revenue/0.9,deducoes:m.revenue/0.9*-0.1,receitaLiquida:dre.receitaLiquida,custos:dre.custos,lucroBruto:dre.lucroBruto,opex:dre.opex,ebitda:dre.ebitda,depreciacao:m.depreciation,resultadoOperacional:dre.resultadoOperacional,resultadoFinanceiro:m.financialResult,lucroLiquido:dre.lucroLiquido,caixaOperacional,investimentos,financiamentos,caixaFinal:caixa}
+})
+
 export const budgetData=monthlyData.map((m,i)=>({month:m.month,receitaLiquida:Math.round(m.receitaLiquida*(i%3===0?.97:i%3===1?1.03:1)),lucroBruto:Math.round(m.lucroBruto*.98),resultadoOperacional:Math.round(m.resultadoOperacional*1.02),lucroLiquido:Math.round(m.lucroLiquido*1.02)}))
+
 export type MonthlyBalance={month:string;ativoCirculante:number;caixa:number;contasReceber:number;estoques:number;outrosAtivos:number;ativoNaoCirculante:number;imobilizado:number;passivoCirculante:number;fornecedores:number;obrigacoes:number;outrosPassivos:number;passivoNaoCirculante:number;dividasLongoPrazo:number;pl:number;ativoTotal:number;passivoTotal:number}
-// Fonte demonstrativa coerente: os subtotais e o PL são derivados dos componentes, nunca informados de forma independente.
-const balances=[[70000,30000,50000,30000,170000,80000,40000,90000,120000,300000],[76000,35000,52000,32000,180000,82000,42000,96000,122000,310000],[82000,42000,55000,33000,190000,85000,43000,102000,125000,317000],[78000,38000,57000,31000,195000,83000,45000,97000,125000,318000],[90000,45000,60000,34000,205000,90000,47000,105000,128000,327000],[96000,50000,62000,36000,210000,94000,49000,110000,132000,331000],[108000,58000,65000,39000,220000,100000,52000,118000,135000,343000],[102000,52000,66000,38000,218000,98000,51000,112000,134000,336000],[116000,62000,70000,40000,230000,108000,54000,124000,138000,348000],[124000,68000,73000,43000,238000,115000,57000,130000,140000,363000],[118000,62000,70000,42000,232000,112000,55000,128000,140000,355000],[135000,75000,78000,45000,245000,125000,60000,145000,145000,365000]]
-export const monthlyBalance:MonthlyBalance[]=balances.map((b,i)=>{const[ac,caixa,cr,est,imob,forn,obr,plong,plExtra,_legacy]=b;const anc=imob;const pc=forn+obr;const outrosAtivos=ac-caixa-cr-est;const outrosPassivos=0;const ativoTotal=ac+anc;const passivoTotal=pc+plong;const pl=ativoTotal-passivoTotal;return{month:months[i],ativoCirculante:ac,caixa,contasReceber:cr,estoques:est,outrosAtivos,ativoNaoCirculante:anc,imobilizado:imob,passivoCirculante:pc,fornecedores:forn,obrigacoes:obr,outrosPassivos,passivoNaoCirculante:plong,dividasLongoPrazo:plong,pl,ativoTotal,passivoTotal}})
+
+let cumulativeProfit=0
+export const monthlyBalance:MonthlyBalance[]=financialCore.map((m,i)=>{
+  cumulativeProfit+=m.revenue-m.cost-m.opex-m.depreciation+m.financialResult+m.taxes
+  const caixa=monthlyData[i].caixaFinal
+  const contasReceber=m.accountsReceivable
+  const estoques=m.inventory
+  const imobilizado=m.fixedAssets
+  const fornecedores=m.suppliers
+  const obrigacoes=m.obligations
+  const dividasLongoPrazo=m.debt
+  const ativoCirculante=caixa+contasReceber+estoques
+  const ativoNaoCirculante=imobilizado
+  const ativoTotal=ativoCirculante+ativoNaoCirculante
+  const passivoCirculante=fornecedores+obrigacoes
+  const passivoNaoCirculante=dividasLongoPrazo
+  const passivoTotal=passivoCirculante+passivoNaoCirculante
+  const pl=openingBalance.equity+cumulativeProfit
+  return{month:months[i],ativoCirculante,caixa,contasReceber,estoques,outrosAtivos:0,ativoNaoCirculante,imobilizado,passivoCirculante,fornecedores,obrigacoes,outrosPassivos:0,passivoNaoCirculante,dividasLongoPrazo,pl,ativoTotal,passivoTotal}
+})

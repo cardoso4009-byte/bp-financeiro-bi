@@ -4,6 +4,7 @@ import { cashFlowEngine } from './dfc-engine'
 import { chartOfAccounts, journalIsBalanced, sampleJournal } from './contabil-model'
 import { reconcileManagementBalance } from './balance-reconciliation'
 import { auditMonthlyBalance, firstBalanceIssue } from './bp-audit'
+import { financialReconciliation } from './financial-reconciliation'
 
 export type AuditSeverity = 'critical' | 'warning' | 'info'
 type Evidence = { source:string; value:string; detail:string }
@@ -16,6 +17,7 @@ export function auditEngine(){
   const managementBp=reconcileManagementBalance()
   const monthlyBp=auditMonthlyBalance()
   const firstMonthlyIssue=firstBalanceIssue(monthlyBp)
+  const financialGate=financialReconciliation()
   const unbalancedEntries=sampleJournal.filter(entry=>{
     const debit=entry.lines.reduce((sum,line)=>sum+line.debit,0)
     const credit=entry.lines.reduce((sum,line)=>sum+line.credit,0)
@@ -48,12 +50,16 @@ export function auditEngine(){
       detail:`Caixa final ${brl(c.finalCash)} − Razão ${brl(cashRow?.balance ?? 0)} = ${brl(c.reconciliation)}`,
       action:'Conciliar movimentações da DFC com Caixa e Bancos no Razão.',
       evidence:[{source:'DFC',value:brl(c.finalCash),detail:'Caixa final calculado pelas movimentações de caixa.'},{source:`Razão ${cashAccount?.name ?? 'Caixa e Bancos'}`,value:brl(cashRow?.balance ?? 0),detail:'Saldo da conta de Caixa e Bancos no Razão.'}] as Evidence[]},
+    {id:'zero-difference-gate',label:'Zero Difference Gate: Core × DRE × DFC × BP',ok:financialGate.overall,severity:'critical' as AuditSeverity,
+      detail:financialGate.overall?`Todas as ${financialGate.summary.total} conciliações estão em R$ 0,00.`:`${financialGate.summary.pending} de ${financialGate.summary.total} conciliações ainda apresentam diferença.`,
+      action:'Corrigir cada divergência da cadeia financeira antes de liberar o fechamento ou adicionar novos módulos.',
+      evidence:[{source:'Conciliação central',value:`${financialGate.summary.ok}/${financialGate.summary.total} OK`,detail:'Comparação estruturada entre Financial Core, DRE, DFC e Balanço gerencial.'},{source:'Pendências',value:`${financialGate.summary.pending}`,detail:'Somente diferenças abaixo de R$ 0,01 são consideradas conciliadas.'}] as Evidence[]},
     {id:'result',label:'DRE: resultado calculado',ok:Number.isFinite(result),severity:'info' as AuditSeverity,
       detail:`Receitas ${brl(s.totals.receitas)} − Custos ${brl(s.totals.custos)} − Despesas ${brl(s.totals.despesas)} = ${brl(result)}`,
       action:'Validar classificação de receitas, custos e despesas antes do encerramento.',
       evidence:[{source:'Receitas',value:brl(s.totals.receitas),detail:'Contas classificadas como Receita na DRE.'},{source:'Custos',value:brl(s.totals.custos),detail:'Contas classificadas como Custo na DRE.'},{source:'Despesas',value:brl(s.totals.despesas),detail:'Contas classificadas como Despesa na DRE.'}] as Evidence[]},
   ]
   const pending=checks.filter(x=>!x.ok)
-  return {checks,pending,result,bpDiff,managementBpDifference:managementBp.difference,monthlyBp,firstMonthlyIssue,cashDiff:c.reconciliation,overall:pending.length===0,
+  return {checks,pending,result,bpDiff,managementBpDifference:managementBp.difference,monthlyBp,firstMonthlyIssue,cashDiff:c.reconciliation,financialGate,overall:pending.length===0,
     summary:{critical:pending.filter(x=>x.severity==='critical').length,warning:pending.filter(x=>x.severity==='warning').length,info:pending.filter(x=>x.severity==='info').length}}
 }
