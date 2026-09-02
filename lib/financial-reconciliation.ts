@@ -1,97 +1,73 @@
-import { financialCore, dreFromCore, cashFromCore } from './financial-core'
-import { monthlyData, monthlyBalance } from './monthly-data'
-import type { FinancialEntry } from './lancamentos-data'
+import {financialCore, openingBalance} from './financial-core'
+import {monthlyData, monthlyBalance} from './monthly-data'
+import type {FinancialEntry} from './lancamentos-data'
 
-export type ReconciliationResult = {
-  sourceRevenue: number
-  sourceOpex: number
-  sourceResult: number
-  entriesCount: number
-  balanced: boolean
-  differences: string[]
+export type ReconciliationResult={sourceRevenue:number;sourceOpex:number;sourceResult:number;entriesCount:number;balanced:boolean;differences:string[]}
+
+export function reconcileOperationalViews(entries:FinancialEntry[]):ReconciliationResult{
+  const operational=entries.filter(e=>e.type==='Receita'||e.type==='Despesa')
+  const sourceRevenue=operational.filter(e=>e.type==='Receita').reduce((s,e)=>s+Math.abs(e.value),0)
+  const sourceOpex=operational.filter(e=>e.type==='Despesa').reduce((s,e)=>s+Math.abs(e.value),0)
+  const sourceResult=sourceRevenue-sourceOpex
+  const differences:string[]=[]
+  if(!Number.isFinite(sourceRevenue)) differences.push('Receita contém valor inválido.')
+  if(!Number.isFinite(sourceOpex)) differences.push('OPEX contém valor inválido.')
+  if(!Number.isFinite(sourceResult)) differences.push('Resultado contém valor inválido.')
+  return{sourceRevenue,sourceOpex,sourceResult,entriesCount:operational.length,balanced:differences.length===0,differences}
 }
 
-/** Cross-check used by management views: DRE and Rentabilidade must reconcile to the same source. */
-export function reconcileOperationalViews(entries: FinancialEntry[]): ReconciliationResult {
-  const operational = entries.filter(e => e.type === 'Receita' || e.type === 'Despesa')
-  const sourceRevenue = operational.filter(e => e.type === 'Receita').reduce((s,e) => s + Math.abs(e.value), 0)
-  const sourceOpex = operational.filter(e => e.type === 'Despesa').reduce((s,e) => s + Math.abs(e.value), 0)
-  const sourceResult = sourceRevenue - sourceOpex
-  const differences: string[] = []
-  if (!Number.isFinite(sourceRevenue)) differences.push('Receita contém valor inválido.')
-  if (!Number.isFinite(sourceOpex)) differences.push('OPEX contém valor inválido.')
-  if (!Number.isFinite(sourceResult)) differences.push('Resultado contém valor inválido.')
-  return { sourceRevenue, sourceOpex, sourceResult, entriesCount: operational.length, balanced: differences.length === 0, differences }
-}
+export type FinancialReconciliationCheck={id:string;month?:string;metric:string;sourceValue:number;viewValue:number;difference:number;ok:boolean;detail:string}
+const TOLERANCE=0.01
+const isOk=(difference:number)=>Math.abs(difference)<TOLERANCE
 
-export type FinancialReconciliationCheck = {
-  id: string
-  month?: string
-  metric: string
-  sourceValue: number
-  viewValue: number
-  difference: number
-  ok: boolean
-  detail: string
-}
+/** Zero Difference Gate: compara as visões com a fonte central, evitando comparações tautológicas. */
+export function financialReconciliation(){
+  const checks:FinancialReconciliationCheck[]=[]
+  let expectedCash=openingBalance.cash
+  let previousPl=openingBalance.equity
 
-const TOLERANCE = 0.01
-const isOk = (difference: number) => Math.abs(difference) < TOLERANCE
-
-/** Zero Difference Gate for the 12-month management financial chain. */
-export function financialReconciliation() {
-  const checks: FinancialReconciliationCheck[] = []
-  let previousPl: number | null = null
-
-  financialCore.forEach((core, i) => {
-    const management = monthlyData[i]
-    const balance = monthlyBalance[i]
-    const dre = dreFromCore(core)
-    const cash = cashFromCore(core)
-
-    const compare = (id: string, metric: string, sourceValue: number, viewValue: number, detail: string) => {
-      const difference = viewValue - sourceValue
-      checks.push({ id, month: core.month, metric, sourceValue, viewValue, difference, ok: isOk(difference), detail })
+  financialCore.forEach((core,i)=>{
+    const management=monthlyData[i]
+    const balance=monthlyBalance[i]
+    const dre={receita:core.revenue,custos:-core.cost,opex:-core.opex,ebitda:core.revenue-core.cost-core.opex,lucroLiquido:core.revenue-core.cost-core.opex-core.depreciation+core.financialResult+core.taxes}
+    const compare=(id:string,metric:string,sourceValue:number,viewValue:number,detail:string)=>{
+      const difference=viewValue-sourceValue
+      checks.push({id,month:core.month,metric,sourceValue,viewValue,difference,ok:isOk(difference),detail})
     }
 
-    compare('core-dre-revenue', 'Receita líquida', dre.receita, management.receitaLiquida, 'Financial Core × DRE gerencial')
-    compare('core-dre-cost', 'Custos', dre.custos, management.custos, 'Financial Core × DRE gerencial')
-    compare('core-dre-opex', 'OPEX', dre.opex, management.opex, 'Financial Core × DRE gerencial')
-    compare('core-dre-ebitda', 'EBITDA', dre.ebitda, management.ebitda, 'Financial Core × DRE gerencial')
+    compare('core-dre-revenue','Receita líquida',dre.receita,management.receitaLiquida,'Financial Core × DRE gerencial')
+    compare('core-dre-cost','Custos',dre.custos,management.custos,'Financial Core × DRE gerencial')
+    compare('core-dre-opex','OPEX',dre.opex,management.opex,'Financial Core × DRE gerencial')
+    compare('core-dre-ebitda','EBITDA',dre.ebitda,management.ebitda,'Financial Core × DRE gerencial')
+    compare('core-dre-net-income','Lucro líquido',dre.lucroLiquido,management.lucroLiquido,'Financial Core × DRE gerencial')
 
-    compare('core-dfc-operating', 'Caixa operacional', core.cashIn - core.cashOut, management.caixaOperacional, 'Financial Core × DFC gerencial')
-    compare('core-dfc-investment', 'Investimentos / CAPEX', cash.capex, management.investimentos, 'Financial Core × DFC gerencial')
+    const expectedOperatingCash=core.cashIn-core.cashOut
+    compare('core-dfc-operating','Caixa operacional',expectedOperatingCash,management.caixaOperacional,'Financial Core × DFC gerencial')
+    compare('core-dfc-investment','Investimentos / CAPEX',-core.capex,management.investimentos,'Financial Core × DFC gerencial')
+    const financingChange=core.debt-(i===0?openingBalance.debt:financialCore[i-1].debt)
+    expectedCash+=expectedOperatingCash-core.capex+financingChange
+    compare('core-dfc-cash-final','Caixa final',expectedCash,management.caixaFinal,'Fonte de caixa × DFC gerencial')
 
-    const expectedCash = i === 0
-      ? 50000 + management.caixaOperacional + management.investimentos + management.financiamentos
-      : monthlyData[i - 1].caixaFinal + management.caixaOperacional + management.investimentos + management.financiamentos
-    compare('cash-roll-forward', 'Caixa final', expectedCash, management.caixaFinal, 'Continuidade do saldo de caixa gerencial')
+    compare('core-bp-cash','Caixa',expectedCash,balance.caixa,'Fonte de caixa × Balanço gerencial')
+    compare('core-bp-receivables','Contas a receber',core.accountsReceivable,balance.contasReceber,'Financial Core × Balanço gerencial')
+    compare('core-bp-inventory','Estoques',core.inventory,balance.estoques,'Financial Core × Balanço gerencial')
+    compare('core-bp-fixed-assets','Imobilizado',core.fixedAssets,balance.imobilizado,'Financial Core × Balanço gerencial')
+    compare('core-bp-suppliers','Fornecedores',core.suppliers,balance.fornecedores,'Financial Core × Balanço gerencial')
+    compare('core-bp-obligations','Obrigações',core.obligations,balance.obrigacoes,'Financial Core × Balanço gerencial')
+    compare('core-bp-debt','Dívida de longo prazo',core.debt,balance.dividasLongoPrazo,'Financial Core × Balanço gerencial')
 
-    compare('cash-bp', 'Caixa no BP', management.caixaFinal, balance.caixa, 'DFC gerencial × Caixa do Balanço')
+    previousPl+=management.lucroLiquido
+    compare('dre-pl-movement','Movimentação do PL',previousPl,balance.pl,'PL de abertura + lucro líquido acumulado × BP')
 
-    const acComposition = balance.caixa + balance.contasReceber + balance.estoques + balance.outrosAtivos
-    const ancComposition = balance.imobilizado
-    compare('bp-ac-composition', 'Ativo circulante', acComposition, balance.ativoCirculante, 'Composição do Ativo Circulante')
-    compare('bp-anc-composition', 'Ativo não circulante', ancComposition, balance.ativoNaoCirculante, 'Composição do Ativo Não Circulante')
-    compare('bp-total-assets', 'Ativo total', balance.ativoCirculante + balance.ativoNaoCirculante, balance.ativoTotal, 'AC + ANC × Ativo Total')
-    compare('bp-total-liabilities', 'Passivo total', balance.passivoCirculante + balance.outrosPassivos + balance.passivoNaoCirculante, balance.passivoTotal, 'PC + outros passivos + PNC × Passivo Total')
-    compare('bp-equation', 'Equação patrimonial', balance.ativoTotal, balance.passivoTotal + balance.pl, 'Ativo = Passivo + Patrimônio Líquido')
-
-    if (previousPl !== null) {
-      compare('dre-pl-movement', 'Movimentação do PL', previousPl + management.lucroLiquido, balance.pl, 'PL anterior + lucro líquido do mês × PL atual')
-    }
-    previousPl = balance.pl
+    const acComposition=balance.caixa+balance.contasReceber+balance.estoques+balance.outrosAtivos
+    const ancComposition=balance.imobilizado
+    compare('bp-ac-composition','Ativo circulante',acComposition,balance.ativoCirculante,'Composição independente do Ativo Circulante')
+    compare('bp-anc-composition','Ativo não circulante',ancComposition,balance.ativoNaoCirculante,'Composição independente do Ativo Não Circulante')
+    compare('bp-total-assets','Ativo total',balance.ativoCirculante+balance.ativoNaoCirculante,balance.ativoTotal,'AC + ANC × Ativo Total')
+    compare('bp-total-liabilities','Passivo total',balance.passivoCirculante+balance.outrosPassivos+balance.passivoNaoCirculante,balance.passivoTotal,'PC + outros passivos + PNC × Passivo Total')
+    compare('bp-equation','Equação patrimonial',balance.ativoTotal,balance.passivoTotal+balance.pl,'Ativo = Passivo + Patrimônio Líquido')
   })
 
-  const pending = checks.filter(check => !check.ok)
-  return {
-    checks,
-    pending,
-    overall: pending.length === 0,
-    summary: {
-      total: checks.length,
-      ok: checks.length - pending.length,
-      pending: pending.length,
-    },
-  }
+  const pending=checks.filter(check=>!check.ok)
+  return{checks,pending,overall:pending.length===0,summary:{total:checks.length,ok:checks.length-pending.length,pending:pending.length}}
 }
