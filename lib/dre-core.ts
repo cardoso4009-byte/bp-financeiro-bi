@@ -1,5 +1,7 @@
 import {financialCore,dreFromCore,type FinancialMonth} from './financial-core'
 
+const MONTH_KEYS=['01','02','03','04','05','06','07','08','09','10','11','12']
+
 export type DRECoreMonth={
   month:string
   year:number
@@ -16,6 +18,7 @@ export type DRECoreMonth={
 
 export const dreCoreMonths:DRECoreMonth[]=financialCore.map((m:FinancialMonth)=>{
   const d=dreFromCore(m)
+  const depreciation=Math.abs(d.depreciacao)
   return {
     month:m.month,
     year:m.year,
@@ -23,8 +26,8 @@ export const dreCoreMonths:DRECoreMonth[]=financialCore.map((m:FinancialMonth)=>
     costs:m.cost,
     ebitda:d.ebitda,
     opex:m.opex,
-    depreciation:m.depreciation,
-    operatingResult:d.ebitda-m.depreciation,
+    depreciation,
+    operatingResult:d.ebitda-depreciation,
     financialResult:d.resultadoFinanceiro,
     taxes:d.impostos,
     netIncome:d.lucroLiquido,
@@ -32,5 +35,5 @@ export const dreCoreMonths:DRECoreMonth[]=financialCore.map((m:FinancialMonth)=>
 })
 
 export const dreCoreByMonth=new Map(
-  dreCoreMonths.map(item=>[`${item.year}-${String(dreCoreMonths.indexOf(item)+1).padStart(2,'0')}`,item])
+  dreCoreMonths.map((item,i)=>[`2026-${MONTH_KEYS[i]}`,item])
 )
