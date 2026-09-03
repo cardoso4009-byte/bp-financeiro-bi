@@ -1,10 +1,9 @@
-import {financialCore, openingBalance} from './financial-core'
+import {financialCore, openingBalance, dreFromCore} from './financial-core'
 import {monthlyData, monthlyBalance} from './monthly-data'
 import {cashFlowEngine} from './dfc-engine'
 import type {FinancialEntry} from './lancamentos-data'
 
 export type ReconciliationResult={sourceRevenue:number;sourceOpex:number;sourceResult:number;entriesCount:number;balanced:boolean;differences:string[]}
-
 export function reconcileOperationalViews(entries:FinancialEntry[]):ReconciliationResult{
   const operational=entries.filter(e=>e.type==='Receita'||e.type==='Despesa')
   const sourceRevenue=operational.filter(e=>e.type==='Receita').reduce((s,e)=>s+Math.abs(e.value),0)
@@ -29,7 +28,7 @@ export function financialReconciliation(){
   financialCore.forEach((core,i)=>{
     const management=monthlyData[i]
     const balance=monthlyBalance[i]
-    const dre={receita:core.revenue,custos:-core.cost,opex:-core.opex,ebitda:core.revenue-core.cost-core.opex,lucroLiquido:core.revenue-core.cost-core.opex-core.depreciation+core.financialResult+core.taxes}
+    const dre=dreFromCore(core)
     const compare=(id:string,metric:string,sourceValue:number,viewValue:number,detail:string)=>{
       const difference=viewValue-sourceValue
       checks.push({id,month:core.month,metric,sourceValue,viewValue,difference,ok:isOk(difference),detail})
@@ -56,8 +55,8 @@ export function financialReconciliation(){
     compare('core-bp-obligations','Obrigações',core.obligations,balance.obrigacoes,'Financial Core × Balanço gerencial')
     compare('core-bp-debt','Dívida de longo prazo',core.debt,balance.dividasLongoPrazo,'Financial Core × Balanço gerencial')
 
-    previousPl+=management.lucroLiquido
-    compare('dre-pl-movement','Movimentação do PL',previousPl,balance.pl,'PL de abertura + lucro líquido acumulado × BP')
+    previousPl+=dre.lucroLiquido
+    compare('dre-pl-movement','Movimentação do PL',previousPl,balance.pl,'PL de abertura + lucro líquido do Financial Core × BP')
 
     const acComposition=balance.caixa+balance.contasReceber+balance.estoques+balance.outrosAtivos
     const ancComposition=balance.imobilizado
