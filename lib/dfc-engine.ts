@@ -20,6 +20,12 @@ export function cashFlowEngine(_entries?:unknown,period?:AnalysisPeriod){
   let operational=0
   let investment=0
   let financing=0
+  let netIncome=0
+  let depreciation=0
+  let deltaReceivables=0
+  let deltaInventory=0
+  let deltaSuppliers=0
+  let deltaObligations=0
   const evidence:CashFlowEvidence[]=[]
   const errors:string[]=[]
 
@@ -30,19 +36,25 @@ export function cashFlowEngine(_entries?:unknown,period?:AnalysisPeriod){
       suppliers:financialCore[i-1].suppliers,
       obligations:financialCore[i-1].obligations,
     }
-    const netIncome=core.revenue-core.cost-core.opex-core.depreciation+core.financialResult+core.taxes
-    const depreciation=core.depreciation
-    const deltaReceivables=core.accountsReceivable-previous.accountsReceivable
-    const deltaInventory=core.inventory-previous.inventory
-    const deltaSuppliers=core.suppliers-previous.suppliers
-    const deltaObligations=core.obligations-previous.obligations
-    const operating=money(netIncome+depreciation-deltaReceivables-deltaInventory+deltaSuppliers+deltaObligations)
+    const monthlyNetIncome=core.revenue-core.cost-core.opex-core.depreciation+core.financialResult+core.taxes
+    const monthlyDepreciation=core.depreciation
+    const monthlyDeltaReceivables=core.accountsReceivable-previous.accountsReceivable
+    const monthlyDeltaInventory=core.inventory-previous.inventory
+    const monthlyDeltaSuppliers=core.suppliers-previous.suppliers
+    const monthlyDeltaObligations=core.obligations-previous.obligations
+    const operating=money(monthlyNetIncome+monthlyDepreciation-monthlyDeltaReceivables-monthlyDeltaInventory+monthlyDeltaSuppliers+monthlyDeltaObligations)
     const investmentFlow=-core.capex
     const financingChange=money(core.debt-(i===0?openingBalance.debt:financialCore[i-1].debt))
 
     operational+=operating
     investment+=investmentFlow
     financing+=financingChange
+    netIncome+=monthlyNetIncome
+    depreciation+=monthlyDepreciation
+    deltaReceivables+=monthlyDeltaReceivables
+    deltaInventory+=monthlyDeltaInventory
+    deltaSuppliers+=monthlyDeltaSuppliers
+    deltaObligations+=monthlyDeltaObligations
 
     evidence.push({entryId:`2026-${String(i+1).padStart(2,'0')}-IND`,date:`2026-${String(i+1).padStart(2,'0')}-28`,description:'Reconciliação da geração de caixa pelo método indireto',cashEffect:operating,counterpart:'DRE + Capital de Giro',category:'operational'})
     evidence.push({entryId:`2026-${String(i+1).padStart(2,'0')}-CAPEX`,date:`2026-${String(i+1).padStart(2,'0')}-28`,description:'Investimentos em imobilizado',cashEffect:investmentFlow,counterpart:'1.2.01',category:'investment'})
@@ -59,5 +71,5 @@ export function cashFlowEngine(_entries?:unknown,period?:AnalysisPeriod){
 
   if(!indices.length)errors.push('Período sem competências financeiras.')
 
-  return{operational:money(operational),investment:money(investment),financing:money(financing),variation,initialCash,finalCash,balanceCash,reconciliation,status:Math.abs(reconciliation)<TOLERANCE&&errors.length===0?'OK':'REVISAR',evidence,errors}
+  return{operational:money(operational),investment:money(investment),financing:money(financing),variation,initialCash,finalCash,balanceCash,reconciliation,status:Math.abs(reconciliation)<TOLERANCE&&errors.length===0?'OK':'REVISAR',evidence,errors,operatingBridge:{netIncome:money(netIncome),depreciation:money(depreciation),deltaReceivables:money(deltaReceivables),deltaInventory:money(deltaInventory),deltaSuppliers:money(deltaSuppliers),deltaObligations:money(deltaObligations)}}
 }
