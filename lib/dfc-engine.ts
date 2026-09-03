@@ -8,13 +8,10 @@ export type CashFlowEvidence={entryId:string;date:string;description:string;cash
 const TOLERANCE=0.01
 const money=(n:number)=>Math.round(n*100)/100
 
-function inPeriod(month:string,period:AnalysisPeriod){return `2026-${month}`>=period.start.slice(0,7)&&`2026-${month}`<=period.end.slice(0,7)}
-
 /** DFC gerencial pelo método indireto, derivada das demonstrações integradas. */
 export function cashFlowEngine(_entries?:unknown,period?:AnalysisPeriod){
   const start=period?.start.slice(0,7)??'2026-01'
   const end=period?.end.slice(0,7)??'2026-12'
-  const selected=financialCore.map((core,i)=>({core,i})).filter(({core})=>`2026-${String(core.monthsIndex??'')}`==='')
   const indices=financialCore.map((core,i)=>({core,i})).filter(({i})=>{
     const key=`2026-${String(i+1).padStart(2,'0')}`
     return key>=start&&key<=end
