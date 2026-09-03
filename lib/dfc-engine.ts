@@ -1,100 +1,66 @@
-import { chartOfAccounts, sampleJournal, type JournalEntry } from './accounting-core'
-import { buildTrialBalance } from './trial-balance-engine'
-import type { AnalysisPeriod } from './period-engine'
+import {financialCore, openingBalance} from './financial-core'
+import {monthlyBalance, monthlyData} from './monthly-data'
+import type {AnalysisPeriod} from './period-engine'
 
-type FlowCategory = 'operational' | 'investment' | 'financing'
+export type FlowCategory='operational'|'investment'|'financing'
+export type CashFlowEvidence={entryId:string;date:string;description:string;cashEffect:number;counterpart:string;category:FlowCategory}
 
-function classifyCounterpart(code: string): FlowCategory {
-  if (code.startsWith('1.2')) return 'investment'
-  if (code.startsWith('2.2') || code.startsWith('3.')) return 'financing'
-  return 'operational'
-}
+const TOLERANCE=0.01
+const money=(n:number)=>Math.round(n*100)/100
 
-export type CashFlowEvidence = {
-  entryId: string
-  date: string
-  description: string
-  cashEffect: number
-  counterpart: string
-  category: FlowCategory
-}
+function inPeriod(month:string,period:AnalysisPeriod){return `2026-${month}`>=period.start.slice(0,7)&&`2026-${month}`<=period.end.slice(0,7)}
 
-const defaultJournal: JournalEntry[] = sampleJournal
+/** DFC gerencial pelo método indireto, derivada das demonstrações integradas. */
+export function cashFlowEngine(_entries?:unknown,period?:AnalysisPeriod){
+  const start=period?.start.slice(0,7)??'2026-01'
+  const end=period?.end.slice(0,7)??'2026-12'
+  const selected=financialCore.map((core,i)=>({core,i})).filter(({core})=>`2026-${String(core.monthsIndex??'')}`==='')
+  const indices=financialCore.map((core,i)=>({core,i})).filter(({i})=>{
+    const key=`2026-${String(i+1).padStart(2,'0')}`
+    return key>=start&&key<=end
+  })
 
-function inPeriod(competence: string, period: AnalysisPeriod) {
-  return competence >= period.start.slice(0, 7) && competence <= period.end.slice(0, 7)
-}
+  let operational=0
+  let investment=0
+  let financing=0
+  const evidence:CashFlowEvidence[]=[]
+  const errors:string[]=[]
 
-function beforePeriod(competence: string, period: AnalysisPeriod) {
-  return competence < period.start.slice(0, 7)
-}
-
-export function cashFlowEngine(entries: JournalEntry[] = defaultJournal, period?: AnalysisPeriod) {
-  const periodEntries = period
-    ? entries.filter((entry) => inPeriod(entry.competence || entry.date.slice(0, 7), period))
-    : entries
-  const cumulativeEntries = period
-    ? entries.filter((entry) => (entry.competence || entry.date.slice(0, 7)) <= period.end.slice(0, 7))
-    : entries
-  const openingEntries = period
-    ? entries.filter((entry) => beforePeriod(entry.competence || entry.date.slice(0, 7), period))
-    : []
-
-  const trial = buildTrialBalance(cumulativeEntries, chartOfAccounts)
-  const openingTrial = buildTrialBalance(openingEntries, chartOfAccounts)
-  const cashCode = '1.1.01'
-  let operational = 0
-  let investment = 0
-  let financing = 0
-  const evidence: CashFlowEvidence[] = []
-  const errors: string[] = [...trial.errors]
-
-  for (const entry of periodEntries) {
-    const cashDebit = entry.lines.find((line) => line.account === cashCode && Number(line.debit) > 0)
-    const cashCredit = entry.lines.find((line) => line.account === cashCode && Number(line.credit) > 0)
-    if (!cashDebit && !cashCredit) continue
-
-    const cashEffect = cashDebit ? Number(cashDebit.debit) : -Number(cashCredit?.credit || 0)
-    const counterpart = entry.lines.find((line) => line.account !== cashCode)
-    const counterpartCode = counterpart?.account ?? ''
-
-    if (!counterpartCode) {
-      errors.push(`${entry.id}: movimento de caixa sem contrapartida identificada.`)
-      continue
+  for(const {core,i} of indices){
+    const previous=i===0?openingBalance:{
+      accountsReceivable:financialCore[i-1].accountsReceivable,
+      inventory:financialCore[i-1].inventory,
+      suppliers:financialCore[i-1].suppliers,
+      obligations:financialCore[i-1].obligations,
     }
+    const netIncome=core.revenue-core.cost-core.opex-core.depreciation+core.financialResult+core.taxes
+    const depreciation=core.depreciation
+    const deltaReceivables=core.accountsReceivable-previous.accountsReceivable
+    const deltaInventory=core.inventory-previous.inventory
+    const deltaSuppliers=core.suppliers-previous.suppliers
+    const deltaObligations=core.obligations-previous.obligations
+    const operating=money(netIncome+depreciation-deltaReceivables-deltaInventory+deltaSuppliers+deltaObligations)
+    const investmentFlow=-core.capex
+    const financingChange=money(core.debt-(i===0?openingBalance.debt:financialCore[i-1].debt))
 
-    const category = classifyCounterpart(counterpartCode)
-    if (category === 'investment') investment += cashEffect
-    else if (category === 'financing') financing += cashEffect
-    else operational += cashEffect
+    operational+=operating
+    investment+=investmentFlow
+    financing+=financingChange
 
-    evidence.push({
-      entryId: entry.id,
-      date: entry.date,
-      description: entry.description,
-      cashEffect,
-      counterpart: counterpartCode,
-      category,
-    })
+    evidence.push({entryId:`2026-${String(i+1).padStart(2,'0')}-IND`,date:`2026-${String(i+1).padStart(2,'0')}-28`,description:'Reconciliação da geração de caixa pelo método indireto',cashEffect:operating,counterpart:'DRE + Capital de Giro',category:'operational'})
+    evidence.push({entryId:`2026-${String(i+1).padStart(2,'0')}-CAPEX`,date:`2026-${String(i+1).padStart(2,'0')}-28`,description:'Investimentos em imobilizado',cashEffect:investmentFlow,counterpart:'1.2.01',category:'investment'})
+    if(financingChange!==0)evidence.push({entryId:`2026-${String(i+1).padStart(2,'0')}-FIN`,date:`2026-${String(i+1).padStart(2,'0')}-28`,description:'Variação de financiamentos',cashEffect:financingChange,counterpart:'2.2.01',category:'financing'})
   }
 
-  const initialCash = openingTrial.rows.find((row) => row.code === cashCode)?.balance ?? 0
-  const variation = operational + investment + financing
-  const finalCash = initialCash + variation
-  const balanceCash = trial.rows.find((row) => row.code === cashCode)?.balance ?? 0
-  const reconciliation = finalCash - balanceCash
+  const firstIndex=indices[0]?.i??0
+  const lastIndex=indices[indices.length-1]?.i??11
+  const initialCash=firstIndex===0?openingBalance.cash:monthlyData[firstIndex-1].caixaFinal
+  const variation=money(operational+investment+financing)
+  const finalCash=money(initialCash+variation)
+  const balanceCash=monthlyBalance[lastIndex]?.caixa??0
+  const reconciliation=money(finalCash-balanceCash)
 
-  return {
-    operational,
-    investment,
-    financing,
-    variation,
-    initialCash,
-    finalCash,
-    balanceCash,
-    reconciliation,
-    status: Math.abs(reconciliation) < 0.01 && errors.length === 0 ? 'OK' : 'REVISAR',
-    evidence,
-    errors,
-  }
+  if(!indices.length)errors.push('Período sem competências financeiras.')
+
+  return{operational:money(operational),investment:money(investment),financing:money(financing),variation,initialCash,finalCash,balanceCash,reconciliation,status:Math.abs(reconciliation)<TOLERANCE&&errors.length===0?'OK':'REVISAR',evidence,errors}
 }
