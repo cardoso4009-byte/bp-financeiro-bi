@@ -1,6 +1,8 @@
 import {financialCore, openingBalance, dreFromCore} from './financial-core'
 import {monthlyData, monthlyBalance} from './monthly-data'
 import {cashFlowEngine} from './dfc-engine'
+import {buildDmpl} from './dmpl-engine'
+import {integratedJournal} from './accounting-core'
 import type {FinancialEntry} from './lancamentos-data'
 
 export type ReconciliationResult={sourceRevenue:number;sourceOpex:number;sourceResult:number;entriesCount:number;balanced:boolean;differences:string[]}
@@ -20,7 +22,7 @@ export type FinancialReconciliationCheck={id:string;month?:string;metric:string;
 const TOLERANCE=0.01
 const isOk=(difference:number)=>Math.abs(difference)<TOLERANCE
 
-/** Zero Difference Gate: compara as visões com a fonte central e valida a DFC pelo motor indireto. */
+/** Zero Difference Gate: compara as visões com a fonte central e valida DFC e DMPL pelos motores integrados. */
 export function financialReconciliation(){
   const checks:FinancialReconciliationCheck[]=[]
   let previousPl=openingBalance.equity
@@ -66,6 +68,12 @@ export function financialReconciliation(){
     compare('bp-total-liabilities','Passivo total',balance.passivoCirculante+balance.outrosPassivos+balance.passivoNaoCirculante,balance.passivoTotal,'PC + outros passivos + PNC × Passivo Total')
     compare('bp-equation','Equação patrimonial',balance.ativoTotal,balance.passivoTotal+balance.pl,'Ativo = Passivo + Patrimônio Líquido')
   })
+
+  const dmpl=buildDmpl(integratedJournal,openingBalance.equity,0,0)
+  const finalBalance=monthlyBalance[monthlyBalance.length-1]
+  const dmplDifference=dmpl.plContabil-finalBalance.pl
+  checks.push({id:'dmpl-bp-final-pl',month:'Dez',metric:'PL final da DMPL',sourceValue:finalBalance.pl,viewValue:dmpl.plContabil,difference:dmplDifference,ok:isOk(dmplDifference),detail:'DMPL integrada × PL final do Balanço'})
+  checks.push({id:'dmpl-status',month:'2026',metric:'Status da reconciliação DMPL',sourceValue:0,viewValue:dmpl.diferenca,difference:dmpl.diferenca,ok:isOk(dmpl.diferenca),detail:'Ponte DMPL: PL inicial + resultado + movimentos = PL contábil'})
 
   const pending=checks.filter(check=>!check.ok)
   return{checks,pending,overall:pending.length===0,summary:{total:checks.length,ok:checks.length-pending.length,pending:pending.length}}
