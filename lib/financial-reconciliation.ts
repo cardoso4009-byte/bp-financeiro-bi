@@ -1,5 +1,6 @@
 import {financialCore, openingBalance} from './financial-core'
 import {monthlyData, monthlyBalance} from './monthly-data'
+import {cashFlowEngine} from './dfc-engine'
 import type {FinancialEntry} from './lancamentos-data'
 
 export type ReconciliationResult={sourceRevenue:number;sourceOpex:number;sourceResult:number;entriesCount:number;balanced:boolean;differences:string[]}
@@ -20,10 +21,9 @@ export type FinancialReconciliationCheck={id:string;month?:string;metric:string;
 const TOLERANCE=0.01
 const isOk=(difference:number)=>Math.abs(difference)<TOLERANCE
 
-/** Zero Difference Gate: compara as visões com a fonte central, evitando comparações tautológicas. */
+/** Zero Difference Gate: compara as visões com a fonte central e valida a DFC pelo motor indireto. */
 export function financialReconciliation(){
   const checks:FinancialReconciliationCheck[]=[]
-  let expectedCash=openingBalance.cash
   let previousPl=openingBalance.equity
 
   financialCore.forEach((core,i)=>{
@@ -41,14 +41,14 @@ export function financialReconciliation(){
     compare('core-dre-ebitda','EBITDA',dre.ebitda,management.ebitda,'Financial Core × DRE gerencial')
     compare('core-dre-net-income','Lucro líquido',dre.lucroLiquido,management.lucroLiquido,'Financial Core × DRE gerencial')
 
-    const expectedOperatingCash=core.cashIn-core.cashOut
-    compare('core-dfc-operating','Caixa operacional',expectedOperatingCash,management.caixaOperacional,'Financial Core × DFC gerencial')
-    compare('core-dfc-investment','Investimentos / CAPEX',-core.capex,management.investimentos,'Financial Core × DFC gerencial')
-    const financingChange=core.debt-(i===0?openingBalance.debt:financialCore[i-1].debt)
-    expectedCash+=expectedOperatingCash-core.capex+financingChange
-    compare('core-dfc-cash-final','Caixa final',expectedCash,management.caixaFinal,'Fonte de caixa × DFC gerencial')
+    const monthKey=`2026-${String(i+1).padStart(2,'0')}`
+    const dfc=cashFlowEngine(undefined,{start:monthKey,end:monthKey})
+    compare('core-dfc-operating','Caixa operacional',dfc.operational,management.caixaOperacional,'Motor DFC indireto × DFC gerencial')
+    compare('core-dfc-investment','Investimentos / CAPEX',dfc.investment,management.investimentos,'Motor DFC indireto × DFC gerencial')
+    compare('core-dfc-financing','Financiamentos',dfc.financing,management.financiamentos,'Motor DFC indireto × DFC gerencial')
+    compare('core-dfc-cash-final','Caixa final',dfc.finalCash,management.caixaFinal,'Motor DFC indireto × DFC gerencial')
 
-    compare('core-bp-cash','Caixa',expectedCash,balance.caixa,'Fonte de caixa × Balanço gerencial')
+    compare('core-bp-cash','Caixa',dfc.finalCash,balance.caixa,'Fonte de caixa × Balanço gerencial')
     compare('core-bp-receivables','Contas a receber',core.accountsReceivable,balance.contasReceber,'Financial Core × Balanço gerencial')
     compare('core-bp-inventory','Estoques',core.inventory,balance.estoques,'Financial Core × Balanço gerencial')
     compare('core-bp-fixed-assets','Imobilizado',core.fixedAssets,balance.imobilizado,'Financial Core × Balanço gerencial')
