@@ -1,69 +1,21 @@
 'use client'
 
 import { buildDmpl } from '@/lib/dmpl-engine'
-import type { JournalEntry } from '@/lib/accounting-core'
+import { integratedJournal } from '@/lib/accounting-core'
+import { openingBalance } from '@/lib/financial-core'
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 
-// O Diário usa o formato oficial do accounting-core: linhas de débito e crédito.
-// O exemplo mantém a ponte da DMPL reconciliada: 250.000 + 90.000 - 20.000 = 320.000.
-const sampleJournal: JournalEntry[] = [
-  {
-    id: '000',
-    date: '2026-01-02',
-    competence: '2026-01',
-    description: 'Integralização de capital social',
-    source: 'MANUAL',
-    lines: [
-      { account: '1.1.01', debit: 250000, credit: 0 },
-      { account: '3.1', debit: 0, credit: 250000 },
-    ],
-  },
-  {
-    id: '001',
-    date: '2026-01-05',
-    competence: '2026-01',
-    description: 'Reconhecimento de receita de vendas',
-    source: 'MANUAL',
-    lines: [
-      { account: '1.1.02', debit: 100000, credit: 0 },
-      { account: '4.1', debit: 0, credit: 100000 },
-    ],
-  },
-  {
-    id: '002',
-    date: '2026-01-10',
-    competence: '2026-01',
-    description: 'Pagamento de despesas operacionais',
-    source: 'MANUAL',
-    lines: [
-      { account: '6.1', debit: 10000, credit: 0 },
-      { account: '1.1.01', debit: 0, credit: 10000 },
-    ],
-  },
-  {
-    id: '003',
-    date: '2026-01-20',
-    competence: '2026-01',
-    description: 'Distribuição de dividendos',
-    source: 'MANUAL',
-    lines: [
-      { account: '3.2', debit: 20000, credit: 0 },
-      { account: '1.1.01', debit: 0, credit: 20000 },
-    ],
-  },
-]
-
 export default function DMPLReconciliationPage() {
-  const d = buildDmpl(sampleJournal, 250000, -20000, 0)
+  const d = buildDmpl(integratedJournal, openingBalance.equity, 0, 0)
   const ok = d.status === 'OK'
   const adjustmentNeeded = -d.diferenca
   const causes = [
     ['Ajustes de exercícios anteriores', 'Revisar lançamentos de períodos anteriores transferidos para o PL.'],
     ['Reservas de lucros ou capital', 'Verificar constituição, reversão ou transferência entre contas patrimoniais.'],
-    ['Ajustes de avaliação patrimonial', 'Verificar lançamentos de avaliação que não passam pelo resultado do período.'],
+    ['Ajustes de avaliação patrimonial', 'Verificar lançamentos de avaliação que não passam pelo resultado.'],
     ['Aumento ou redução de capital', 'Conferir integralizações, reduções e demais movimentações de capital.'],
-    ['Outros movimentos patrimoniais', 'Identificar lançamentos diretamente no patrimônio líquido sem classificação na ponte.'],
+    ['Outros movimentos patrimoniais', 'Identificar lançamentos diretamente no PL sem classificação na ponte.'],
     ['Classificação contábil', 'Conferir se algum lançamento foi contabilizado no PL, mas não está mapeado na DMPL.'],
   ]
 
