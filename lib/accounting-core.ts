@@ -33,6 +33,7 @@ export const chartOfAccounts:Account[]=[
   {code:'6.1',name:'Despesas Operacionais',class:'despesa',nature:'devedora',level:2,parentCode:'6'},
   {code:'6.2',name:'Despesas Financeiras',class:'despesa',nature:'devedora',level:2,parentCode:'6'},
   {code:'6.3',name:'Impostos sobre o Resultado',class:'despesa',nature:'devedora',level:2,parentCode:'6'},
+  {code:'6.4',name:'Depreciação',class:'despesa',nature:'devedora',level:2,parentCode:'6'},
 ]
 
 const money=(n:number)=>Math.round(n*100)/100
@@ -66,7 +67,7 @@ const monthlyEntries:JournalEntry[]=financialCore.flatMap((m,i)=>{
     {id:id('COGS'),date,competence,description:'Reconhecimento do custo dos produtos/serviços',source:'INTEGRACAO',lines:[{account:'5.1',debit:m.cost,credit:0},{account:'1.1.03',debit:0,credit:m.cost}]},
     {id:id('OPEX'),date,competence,description:'Reconhecimento das despesas operacionais',source:'INTEGRACAO',lines:[{account:'6.1',debit:m.opex,credit:0},{account:'2.1.01',debit:0,credit:m.opex}]},
     {id:id('SUP'),date,competence,description:'Pagamento a fornecedores',source:'INTEGRACAO',lines:[{account:'2.1.01',debit:supplierPayment,credit:0},{account:'1.1.01',debit:0,credit:supplierPayment}]},
-    {id:id('DEP'),date,competence,description:'Depreciação do imobilizado',source:'INTEGRACAO',lines:[{account:'6.1',debit:m.depreciation,credit:0},{account:'1.2.01',debit:0,credit:m.depreciation}]},
+    {id:id('DEP'),date,competence,description:'Depreciação do imobilizado',source:'INTEGRACAO',lines:[{account:'6.4',debit:m.depreciation,credit:0},{account:'1.2.01',debit:0,credit:m.depreciation}]},
     {id:id('FINEXP'),date,competence,description:'Pagamento de despesas financeiras',source:'INTEGRACAO',lines:[{account:'6.2',debit:financePayment,credit:0},{account:'1.1.01',debit:0,credit:financePayment}]},
     {id:id('TAX'),date,competence,description:'Reconhecimento dos impostos sobre o resultado',source:'INTEGRACAO',lines:[{account:'6.3',debit:taxPayment,credit:0},{account:'2.1.02',debit:0,credit:taxPayment}]},
     {id:id('TAXPAY'),date,competence,description:'Pagamento dos impostos sobre o resultado',source:'INTEGRACAO',lines:[{account:'2.1.02',debit:taxPayment,credit:0},{account:'1.1.01',debit:0,credit:taxPayment}]},
