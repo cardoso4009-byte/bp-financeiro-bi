@@ -2,7 +2,8 @@ import {financialCore, openingBalance, dreFromCore} from './financial-core'
 import {monthlyData, monthlyBalance} from './monthly-data'
 import {cashFlowEngine} from './dfc-engine'
 import {buildDmpl} from './dmpl-engine'
-import {integratedJournal} from './accounting-core'
+import {integratedJournal, chartOfAccounts} from './accounting-core'
+import {buildTrialBalance} from './trial-balance-engine'
 import type {FinancialEntry} from './lancamentos-data'
 
 export type ReconciliationResult={sourceRevenue:number;sourceOpex:number;sourceResult:number;entriesCount:number;balanced:boolean;differences:string[]}
@@ -22,7 +23,7 @@ export type FinancialReconciliationCheck={id:string;month?:string;metric:string;
 const TOLERANCE=0.01
 const isOk=(difference:number)=>Math.abs(difference)<TOLERANCE
 
-/** Zero Difference Gate: compara as visões com a fonte central e valida DFC e DMPL pelos motores integrados. */
+/** Zero Difference Gate: compara as visões com a fonte central e valida DFC, DMPL e saldos contábeis pelo Diário integrado. */
 export function financialReconciliation(){
   const checks:FinancialReconciliationCheck[]=[]
   let previousPl=openingBalance.equity
@@ -74,6 +75,25 @@ export function financialReconciliation(){
   const dmplDifference=dmpl.plContabil-finalBalance.pl
   checks.push({id:'dmpl-bp-final-pl',month:'Dez',metric:'PL final da DMPL',sourceValue:finalBalance.pl,viewValue:dmpl.plContabil,difference:dmplDifference,ok:isOk(dmplDifference),detail:'DMPL integrada × PL final do Balanço'})
   checks.push({id:'dmpl-status',month:'2026',metric:'Status da reconciliação DMPL',sourceValue:0,viewValue:dmpl.diferenca,difference:dmpl.diferenca,ok:isOk(dmpl.diferenca),detail:'Ponte DMPL: PL inicial + resultado + movimentos = PL contábil'})
+
+  const trial=buildTrialBalance(integratedJournal,chartOfAccounts)
+  const trialDifference=trial.totalDebit-trial.totalCredit
+  checks.push({id:'accounting-trial-balance',month:'2026',metric:'Balancete contábil',sourceValue:0,viewValue:trialDifference,difference:trialDifference,ok:isOk(trialDifference)&&trial.errors.length===0,detail:trial.errors.length?`Balancete com ${trial.errors.length} erro(s).`:'Débitos = créditos e lançamentos válidos.'})
+
+  const finalLedgerAccounts=new Map(trial.rows.map(row=>[row.code,row.balance]))
+  const accountingBpChecks:[string,string,string,number,number][]=[
+    ['accounting-bp-cash','Caixa contábil × BP','1.1.01',finalLedgerAccounts.get('1.1.01')??0,finalBalance.caixa],
+    ['accounting-bp-receivables','Contas a receber contábil × BP','1.1.02',finalLedgerAccounts.get('1.1.02')??0,finalBalance.contasReceber],
+    ['accounting-bp-inventory','Estoques contábil × BP','1.1.03',finalLedgerAccounts.get('1.1.03')??0,finalBalance.estoques],
+    ['accounting-bp-fixed-assets','Imobilizado contábil × BP','1.2.01',finalLedgerAccounts.get('1.2.01')??0,finalBalance.imobilizado],
+    ['accounting-bp-suppliers','Fornecedores contábil × BP','2.1.01',finalLedgerAccounts.get('2.1.01')??0,finalBalance.fornecedores],
+    ['accounting-bp-obligations','Obrigações contábil × BP','2.1.02',finalLedgerAccounts.get('2.1.02')??0,finalBalance.obrigacoes],
+    ['accounting-bp-debt','Dívida contábil × BP','2.2.01',finalLedgerAccounts.get('2.2.01')??0,finalBalance.dividasLongoPrazo],
+  ]
+  for(const [id,metric,accountCode,ledgerValue,bpValue] of accountingBpChecks){
+    const difference=bpValue-ledgerValue
+    checks.push({id,month:'Dez',metric,sourceValue:ledgerValue,viewValue:bpValue,difference,ok:isOk(difference),detail:`Diário integrado conta ${accountCode} × Balanço gerencial`})
+  }
 
   const pending=checks.filter(check=>!check.ok)
   return{checks,pending,overall:pending.length===0,summary:{total:checks.length,ok:checks.length-pending.length,pending:pending.length}}
