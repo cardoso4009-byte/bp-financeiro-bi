@@ -7,8 +7,9 @@ const factors:Record<Scenario,number>={base:1,otimista:1.08,pessimista:.92}
 
 /**
  * A projeção base reproduz a DFC indireta do Financial Core.
- * Os cenários apenas aplicam uma premissa explícita sobre a geração operacional;
- * CAPEX e financiamentos continuam vindo da fonte central para não inventar eventos.
+ * Os cenários aplicam uma premissa explícita sobre a geração operacional;
+ * os componentes exibidos são derivados da mesma ponte para que entradas,
+ * saídas, CAPEX, financiamentos e variação de caixa permaneçam reconciliados.
  */
 export function buildCashForecast(scenario:Scenario='base',_initialCash=openingBalance.cash):CashForecastRow[]{
   let closing=openingBalance.cash
@@ -19,10 +20,12 @@ export function buildCashForecast(scenario:Scenario='base',_initialCash=openingB
     const operating=flow.operational*f
     const investment=flow.investment
     const financing=flow.financing
+    const inflows=m.cashIn*f
+    const operatingOutflows=Math.max(0,inflows-operating)
     const net=operating+investment+financing
     const opening=closing
     closing=opening+net
-    return{month:m.month,opening,inflows:m.cashIn*f,operatingOutflows:Math.max(0,m.cashOut*(scenario==='pessimista'?1.04:scenario==='otimista'?.98:1)),capex:Math.abs(investment),financing,net,closing,minimum:30000}
+    return{month:m.month,opening,inflows,operatingOutflows,capex:Math.abs(investment),financing,net,closing,minimum:30000}
   })
 }
 
