@@ -8,6 +8,12 @@ import { financialReconciliation } from './financial-reconciliation'
 
 export type ClosingStatus = 'ABERTO' | 'PRE_FECHAMENTO' | 'FECHADO'
 
+export type ClosingDecision = {
+  allowed: boolean
+  targetStatus: ClosingStatus
+  reason: string
+}
+
 export function closingEngine(status: ClosingStatus = 'ABERTO') {
   const s = statementEngine(sampleJournal)
   const c = cashFlowEngine(sampleJournal)
@@ -51,8 +57,34 @@ export function closingEngine(status: ClosingStatus = 'ABERTO') {
     dmplDifference,
     gate,
     checks: { ...checks, accountingOverall, overall },
-    canPreClose: overall,
+    canPreClose: status === 'ABERTO' && overall,
     canClose: status === 'PRE_FECHAMENTO' && overall,
+  }
+}
+
+export function preClosingDecision(current: ClosingStatus, checksOk: boolean): ClosingDecision {
+  if (current !== 'ABERTO') {
+    return {
+      allowed: false,
+      targetStatus: current,
+      reason: current === 'PRE_FECHAMENTO'
+        ? 'A competência já está em pré-fechamento.'
+        : 'A competência já está fechada.',
+    }
+  }
+
+  if (!checksOk) {
+    return {
+      allowed: false,
+      targetStatus: 'ABERTO',
+      reason: 'Pré-fechamento bloqueado: existem pendências nas validações obrigatórias.',
+    }
+  }
+
+  return {
+    allowed: true,
+    targetStatus: 'PRE_FECHAMENTO',
+    reason: 'Todas as validações obrigatórias foram aprovadas. Competência liberada para pré-fechamento.',
   }
 }
 
