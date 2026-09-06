@@ -4,6 +4,7 @@ import { buildTrialBalance } from './razao-balancete'
 import { journalIsBalanced, sampleJournal } from './accounting-core'
 import { reconcileManagementBalance } from './balance-reconciliation'
 import { auditMonthlyBalance, firstBalanceIssue } from './bp-audit'
+import { financialReconciliation } from './financial-reconciliation'
 
 export type ClosingStatus = 'ABERTO' | 'PRE_FECHAMENTO' | 'FECHADO'
 
@@ -21,6 +22,7 @@ export function closingEngine(status: ClosingStatus = 'ABERTO') {
 
   const dmplExpected = s.totals.patrimonioRegistrado + result
   const dmplDifference = s.totals.patrimonio - dmplExpected
+
   const checks = {
     journal,
     trial: trial.balanced,
@@ -31,7 +33,10 @@ export function closingEngine(status: ClosingStatus = 'ABERTO') {
     result: Number.isFinite(result),
     dmpl: Math.abs(dmplDifference) < 0.01,
   }
-  const overall = checks.journal && checks.trial && checks.bp && checks.bpManagement && checks.bpManagementSeries && checks.cash && checks.result && checks.dmpl
+
+  const accountingOverall = Object.values(checks).every(Boolean)
+  const gate = financialReconciliation()
+  const overall = accountingOverall && gate.overall
 
   return {
     status,
@@ -44,7 +49,8 @@ export function closingEngine(status: ClosingStatus = 'ABERTO') {
     cashDifference,
     dmplExpected,
     dmplDifference,
-    checks: { ...checks, overall },
+    gate,
+    checks: { ...checks, accountingOverall, overall },
     canPreClose: overall,
     canClose: status === 'PRE_FECHAMENTO' && overall,
   }
