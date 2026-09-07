@@ -1,4 +1,4 @@
-import { closingEngine } from '@/lib/closing-engine'
+import { closingEngine, preClosingDecision } from '@/lib/closing-engine'
 
 const brl = (n:number) => n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0})
 
@@ -6,7 +6,8 @@ export default function FechamentoContabil(){
  const c=closingEngine()
  const overall=c.checks.overall
  const gate=c.gate
- const statusLabel=overall?'PRONTO PARA FECHAMENTO':'PENDÊNCIAS'
+ const preClose=preClosingDecision(c.status, overall)
+ const statusLabel=c.status==='ABERTO'?(preClose.allowed?'LIBERADO PARA PRÉ-FECHAMENTO':'PENDÊNCIAS'):c.status
  const statusClass=overall?'ok':'bad'
  const checkRows=[
   ['1. Livro Diário',c.checks.journal,'Partidas dobradas: cada lançamento deve ter Débito = Crédito.'],
@@ -28,7 +29,7 @@ export default function FechamentoContabil(){
    <div className="card"><span>Resultado do período</span><strong>{brl(c.result)}</strong><small>DRE → PL</small></div>
    <div className="card"><span>Zero Difference Gate</span><strong>{gate.summary.ok}/{gate.summary.total}</strong><small>{gate.summary.pending===0?'0 pendências':'Revisar pendências'}</small></div>
    <div className="card"><span>Conciliação de caixa</span><strong>{c.checks.cash?'✓ OK':'! REVISAR'}</strong><small>DFC × Razão</small></div>
-   <div className="card"><span>Prontidão do fechamento</span><strong>{overall?'✓ OK':'! REVISAR'}</strong><small>{overall?'Pode avançar para pré-fechamento':'Fechamento bloqueado'}</small></div>
+   <div className="card"><span>Prontidão do fechamento</span><strong>{overall?'✓ OK':'! REVISAR'}</strong><small>{preClose.allowed?'Liberado para pré-fechamento':'Pré-fechamento bloqueado'}</small></div>
   </div>
 
   <section className="panel wide">
@@ -47,8 +48,17 @@ export default function FechamentoContabil(){
   </section>
 
   <section className="panel">
+   <div className="panel-title"><h2>Governança do fechamento</h2><span className={preClose.allowed?'ok':'bad'}>{preClose.allowed?'PRÉ-FECHAMENTO LIBERADO':'PRÉ-FECHAMENTO BLOQUEADO'}</span></div>
+   <div className="rows">
+    <div className="row"><span>Status atual</span><b>{c.status}</b></div>
+    <div className="row"><span>Próximo estágio</span><b>{preClose.allowed?'PRE_FECHAMENTO':'Permanece ABERTO'}</b></div>
+    <div className="row"><span>Regra de transição</span><b>{preClose.reason}</b></div>
+   </div>
+  </section>
+
+  <section className="panel">
    <div className="panel-title"><h2>Diagnóstico executivo</h2><span>{overall?'LIBERADO':'BLOQUEADO'}</span></div>
-   <div className="note">{overall?'A competência está reconciliada nas demonstrações e no Zero Difference Gate. O próximo estágio é o pré-fechamento, antes do fechamento definitivo.':'O fechamento não deve ser considerado concluído enquanto houver divergências. O BI evidencia a diferença e preserva a rastreabilidade, sem criar lançamentos artificiais para “fechar” os números.'}</div>
+   <div className="note">{overall?'A competência está reconciliada nas demonstrações e no Zero Difference Gate. Todas as validações obrigatórias estão aprovadas para o estágio de pré-fechamento. O fechamento definitivo permanece como etapa posterior.':'O fechamento não deve ser considerado concluído enquanto houver divergências. O BI evidencia a diferença e preserva a rastreabilidade, sem criar lançamentos artificiais para “fechar” os números.'}</div>
   </section>
 
   <section className="panel">
