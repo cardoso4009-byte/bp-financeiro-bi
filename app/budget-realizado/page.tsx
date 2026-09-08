@@ -11,7 +11,7 @@ const pct = (n:number) => `${(n*100).toFixed(1).replace('.',',')}%`
 const months = initialBudget.map(r=>r.month)
 const thresholds = { warning: 0.03, critical: 0.05 }
 
-type Actual = { revenue:number; cost:number; opex:number; capex:number }
+type Actual = { revenueActual:number; costActual:number; opexActual:number; capexActual:number }
 type Row = BudgetPlan & Actual & { ebitdaBudget:number; ebitdaActual:number }
 type DeviationKind = 'revenue'|'expense'|'ebitda'
 type Severity = 'normal'|'attention'|'critical'
@@ -20,12 +20,12 @@ type Analytic = { name:string; value:number; share:number }
 function actualFor(entries:FinancialEntry[], monthIndex:number):Actual {
   const competence = `2026-${String(monthIndex+1).padStart(2,'0')}`
   const current = entries.filter(e=>e.competence===competence)
-  const revenue = current.filter(e=>e.type==='Receita').reduce((s,e)=>s+Math.abs(e.value),0)
-  const capex = current.filter(e=>e.type==='CAPEX').reduce((s,e)=>s+Math.abs(e.value),0)
+  const revenueActual = current.filter(e=>e.type==='Receita').reduce((s,e)=>s+Math.abs(e.value),0)
+  const capexActual = current.filter(e=>e.type==='CAPEX').reduce((s,e)=>s+Math.abs(e.value),0)
   const expenses = current.filter(e=>e.type==='Despesa')
-  const cost = expenses.filter(e=>/(cmv|custo|produção|producao|mercadoria|serviço direto|servico direto)/i.test(`${e.category} ${e.description}`)).reduce((s,e)=>s+Math.abs(e.value),0)
-  const opex = expenses.reduce((s,e)=>s+Math.abs(e.value),0)-cost
-  return {revenue,cost,opex,capex}
+  const costActual = expenses.filter(e=>/(cmv|custo|produção|producao|mercadoria|serviço direto|servico direto)/i.test(`${e.category} ${e.description}`)).reduce((s,e)=>s+Math.abs(e.value),0)
+  const opexActual = expenses.reduce((s,e)=>s+Math.abs(e.value),0)-costActual
+  return { revenueActual,costActual,opexActual,capexActual }
 }
 
 function deviationPercent(actual:number,budget:number){ return budget===0 ? (actual===0?0:1) : (actual-budget)/Math.abs(budget) }
@@ -67,7 +67,7 @@ export default function BudgetRealizado(){
   useEffect(()=>{ setBudget(readBudgetPlan()); setEntries(readFinancialSource().entries) },[])
   useEffect(()=>{ if(saved) writeBudgetPlan(budget) },[budget,saved])
 
-  const rows=useMemo<Row[]>(()=>budget.map((b,i)=>{const a=actualFor(entries,i);return {...b,...a,ebitdaBudget:b.revenue-b.cost-b.opex,ebitdaActual:a.revenue-a.cost-a.opex}}),[budget,entries])
+  const rows=useMemo<Row[]>(()=>budget.map((b,i)=>{const a=actualFor(entries,i);return {...b,...a,ebitdaBudget:b.revenue-b.cost-b.opex,ebitdaActual:a.revenueActual-a.costActual-a.opexActual}}),[budget,entries])
   const visible=rows.slice(start,end+1)
   const total=(field:keyof Row)=>visible.reduce((s,r)=>s+Number(r[field]||0),0)
   const revenueVar=total('revenueActual')-total('revenue')
