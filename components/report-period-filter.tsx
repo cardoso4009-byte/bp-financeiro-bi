@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import type { ReportPeriod } from '@/lib/report-period'
+import { REPORT_MONTHS, type ReportPeriod, type ReportView } from '@/lib/report-period'
 
 export type { ReportPeriod, ReportView } from '@/lib/report-period'
 
