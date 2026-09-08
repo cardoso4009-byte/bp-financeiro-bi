@@ -2,13 +2,11 @@
 
 import { useMemo, useState } from 'react'
 import { readFinancialSource } from '@/lib/financial-source'
-import { calculateFinancialIndicators } from '@/lib/financial-indicators'
-import { buildAccountingIndicatorCards } from '@/lib/financial-indicators'
+import { calculateFinancialIndicators, buildAccountingIndicatorCards } from '@/lib/financial-indicators'
 import { buildFinancialDiagnosis, diagnosisSummary } from '@/lib/financial-diagnosis'
 import { readActionPlan, ActionPlanItem, writeActionPlan } from '@/lib/action-plan-store'
 import { GovernanceMeeting, GovernanceMeetingStatus, readGovernanceMeetings, upsertGovernanceMeeting } from '@/lib/governance-store'
 
-const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 const today = () => new Date().toISOString().slice(0, 10)
 
 export default function Governanca() {
@@ -20,20 +18,17 @@ export default function Governanca() {
 
   const data = useMemo(() => calculateFinancialIndicators(source.entries), [source])
   const accounting = useMemo(() => buildAccountingIndicatorCards(), [])
-  const diagnoses = useMemo(() => buildFinancialDiagnosis(accounting[0]?.snapshot ?? {} as any, data.indicators), [accounting, data])
+  const diagnoses = useMemo(() => buildFinancialDiagnosis(accounting.snapshot, data.indicators), [accounting, data])
   const openActions = actions.filter((a) => a.status === 'Pendente' || a.status === 'Em andamento')
   const overdue = openActions.filter((a) => a.dueDate && a.dueDate < today())
   const dueSoon = openActions.filter((a) => a.dueDate && a.dueDate >= today() && a.dueDate <= addDays(today(), 7))
   const critical = openActions.filter((a) => a.priority === 'Crítica' || a.priority === 'Alta')
 
-  function refreshActions() {
-    setActions(readActionPlan())
-  }
-
   function closeAction(item: ActionPlanItem) {
-    const updated = { ...item, status: 'Concluído' as const, actualImpact: item.actualImpact || item.expectedImpact, updatedAt: undefined as any }
-    writeActionPlan(actions.map((a) => a.id === item.id ? updated : a))
-    refreshActions()
+    const updated = { ...item, status: 'Concluído' as const, actualImpact: item.actualImpact || item.expectedImpact }
+    const next = actions.map((a) => a.id === item.id ? updated : a)
+    writeActionPlan(next)
+    setActions(next)
   }
 
   function saveMeeting(status: GovernanceMeetingStatus = 'Realizada') {
@@ -50,14 +45,10 @@ export default function Governanca() {
     <header><div><small>CONTROLADORIA FINANCEIRA</small><h1>Governança Gerencial</h1><p>Alerta → Ação → Reunião → Responsável → Prazo → Evidência → Encerramento</p></div><div className="period">2026</div></header>
 
     <div className="cards">
-      <Metric title="Ações abertas" value={String(openActions.length)} />
-      <Metric title="Ações críticas" value={String(critical.length)} />
-      <Metric title="Ações atrasadas" value={String(overdue.length)} />
-      <Metric title="Vencem em 7 dias" value={String(dueSoon.length)} />
-      <Metric title="Reuniões realizadas" value={String(meetings.filter((m) => m.status === 'Realizada').length)} />
+      <Metric title="Ações abertas" value={String(openActions.length)} /><Metric title="Ações críticas" value={String(critical.length)} /><Metric title="Ações atrasadas" value={String(overdue.length)} /><Metric title="Vencem em 7 dias" value={String(dueSoon.length)} /><Metric title="Reuniões realizadas" value={String(meetings.filter((m) => m.status === 'Realizada').length)} />
     </div>
 
-    <section className="panel wide"><div className="panel-title"><div><h2>1. Alertas que exigem gestão</h2><span>{diagnosisSummary(diagnoses)}</span></div><a href="/alertas-gerenciais" style={{ fontWeight: 800 }}>Ver cockpit de alertas →</a></div>
+    <section className="panel wide"><div className="panel-title"><div><h2>1. Alertas que exigem gestão</h2><span>{diagnosisSummary(data, accounting)}</span></div><a href="/alertas-gerenciais" style={{ fontWeight: 800 }}>Ver cockpit de alertas →</a></div>
       <div style={{ display: 'grid', gap: 10 }}>{diagnoses.slice(0, 5).map((d) => <div className="note" key={d.key}><strong>{d.title}</strong><p style={{ margin: '4px 0' }}>{d.signal}</p><small>Hipótese: {d.hypothesis}</small></div>)}</div>
     </section>
 
@@ -66,12 +57,7 @@ export default function Governanca() {
     </section>
 
     <section className="panel wide"><div className="panel-title"><div><h2>3. Reunião de Resultado</h2><span>Registre decisões e evidências da gestão</span></div><button onClick={() => setShowMeeting((v) => !v)}>{showMeeting ? 'Fechar' : '+ Registrar reunião'}</button></div>
-      {showMeeting && <div className="panel" style={{ margin: 0 }}><div className="grid">
-        <Field label="Data" value={form.date} onChange={(v) => setForm({ ...form, date: v })} type="date" />
-        <Field label="Competência" value={form.competence} onChange={(v) => setForm({ ...form, competence: v })} type="month" />
-        <Field label="Título" value={form.title} onChange={(v) => setForm({ ...form, title: v })} />
-        <Field label="Participantes" value={form.participants} onChange={(v) => setForm({ ...form, participants: v })} />
-      </div><TextArea label="Decisões e encaminhamentos" value={form.decisions} onChange={(v) => setForm({ ...form, decisions: v })} /><TextArea label="Evidência / ata / observações" value={form.evidence} onChange={(v) => setForm({ ...form, evidence: v })} /><button onClick={() => saveMeeting('Realizada')}>Encerrar e registrar reunião</button></div>}
+      {showMeeting && <div className="panel" style={{ margin: 0 }}><div className="grid"><Field label="Data" value={form.date} onChange={(v) => setForm({ ...form, date: v })} type="date" /><Field label="Competência" value={form.competence} onChange={(v) => setForm({ ...form, competence: v })} type="month" /><Field label="Título" value={form.title} onChange={(v) => setForm({ ...form, title: v })} /><Field label="Participantes" value={form.participants} onChange={(v) => setForm({ ...form, participants: v })} /></div><TextArea label="Decisões e encaminhamentos" value={form.decisions} onChange={(v) => setForm({ ...form, decisions: v })} /><TextArea label="Evidência / ata / observações" value={form.evidence} onChange={(v) => setForm({ ...form, evidence: v })} /><button onClick={() => saveMeeting()}>Encerrar e registrar reunião</button></div>}
       <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>{meetings.slice(0, 8).map((m) => <MeetingRow key={m.id} meeting={m} />)}</div>
     </section>
 
