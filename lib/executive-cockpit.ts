@@ -1,6 +1,7 @@
 import { buildAccountingIndicatorCards } from './financial-indicators'
 import { buildFinancialDiagnosis, type Diagnosis } from './financial-diagnosis'
 import { monthlyBalance, monthlyData } from './monthly-data'
+import type { Indicator } from './financial-indicators'
 
 export type ExecutivePriority = {
  title: string
@@ -23,12 +24,12 @@ export type ExecutiveCockpit = {
  priorities: ExecutivePriority[]
 }
 
-export function buildExecutiveCockpit(index = monthlyBalance.length - 1): ExecutiveCockpit {
+export function buildExecutiveCockpit(index = monthlyBalance.length - 1, gerencial: Indicator[] = []): ExecutiveCockpit {
  const safe = Math.max(0, Math.min(index, monthlyBalance.length - 1))
  const balance = monthlyBalance[safe]
  const result = monthlyData[safe]
  const accounting = buildAccountingIndicatorCards(safe)
- const diagnoses = buildFinancialDiagnosis(accounting.snapshot, [])
+ const diagnoses = buildFinancialDiagnosis(accounting.snapshot, gerencial)
  const priorities: ExecutivePriority[] = diagnoses.slice(0, 5).map((d: Diagnosis) => ({
   title: d.title,
   severity: d.severity,
