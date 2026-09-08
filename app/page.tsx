@@ -5,6 +5,7 @@ import { financialEntriesToJournal } from '@/lib/financial-accounting-integratio
 import { readFinancialSource } from '@/lib/financial-source'
 import { statementEngine } from '@/lib/statement-engine'
 import { managementImpact } from '@/lib/management-integration'
+import ExecutiveCockpit from '@/components/executive-cockpit'
 
 const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0})
 const pct=(n:number)=>`${(n*100).toFixed(1).replace('.',',')}%`
@@ -81,6 +82,7 @@ export default function Home(){
     <footer>V2.10 • Projeto Consultoria Financeira</footer>
    </aside>
    <section className="content"><header><div><small>CONTROLADORIA FINANCEIRA</small><h1>Visão Executiva</h1><p>Painel integrado • Resultado • Caixa • Patrimônio • Capital de Giro</p></div><div className="period">Jan–Dez 2026</div></header>
+    <ExecutiveCockpit />
     <div className="cards"><Card title="Receita Líquida" value={totals.receitas} sub="Regime de competência"/><Card title="Lucro Bruto" value={lucroBruto} sub={`Margem ${pct(margemBruta)}`}/><Card title="Resultado Operacional" value={resultadoOperacional} sub={`Margem ${pct(margemOp)}`}/><Card title="Lucro Líquido" value={lucroLiquido} sub={`Margem ${pct(margemLiq)}`}/></div>
     <div className="grid"><section className="panel"><div className="panel-title"><h2>Desempenho financeiro</h2><span>2026 • DRE</span></div><div className="rows"><Row label="Receita líquida" value={totals.receitas}/><Row label="Custos" value={-totals.custos}/><Row label="Despesas operacionais" value={-despesasOp}/><Row label="Resultado operacional" value={resultadoOperacional}/><Row label="Resultado financeiro" value={resultadoFinanceiro}/><Row label="Lucro líquido" value={lucroLiquido}/></div></section>
      <section className="panel"><div className="panel-title"><h2>Integração financeira</h2><span>Base única</span></div><div className="rows"><Row label="Lançamentos" value={source.entries.length} currency={false}/><Row label="Pagos" value={paid} currency={false}/><Row label="Em aberto" value={open} currency={false}/><Row label="Impacto em caixa" value={management.cash}/><Row label="Impacto patrimonial pendente" value={management.balance}/><Row label="Pressão de capital de giro" value={management.workingCapital}/></div></section></div>
