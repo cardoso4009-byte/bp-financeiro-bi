@@ -9,11 +9,20 @@ import ReportPeriodFilter from '@/components/report-period-filter'
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 const competence = (year: number, month: number) => `${year}-${String(month).padStart(2, '0')}`
+const availableYears = Array.from(new Set(integratedJournal.map(e => Number((e.competence || e.date.slice(0, 7)).slice(0, 4))))).filter(Number.isFinite).sort((a, b) => a - b)
 
 export default function DMPLReconciliationPage() {
-  const [period, setPeriod] = useState<ReportPeriod>({ year: 2026, month: 12, view: 'mensal' })
+  const [period, setPeriod] = useState<ReportPeriod>({ year: availableYears[0] ?? 2026, month: 12, view: 'mensal' })
   const current = useMemo(() => buildForPeriod(period), [period])
-  const previous = useMemo(() => period.month > 1 ? buildForPeriod({ ...period, month: period.month - 1, view: 'mensal' }) : null, [period])
+  const previousPeriod = useMemo(() => {
+    const previousMonth = period.month === 1 ? 12 : period.month - 1
+    const previousYear = period.month === 1 ? period.year - 1 : period.year
+    return { ...period, year: previousYear, month: previousMonth, view: 'mensal' as const }
+  }, [period])
+  const previous = useMemo(() => {
+    if (!hasCompetence(previousPeriod.year, previousPeriod.month)) return null
+    return buildForPeriod(previousPeriod)
+  }, [previousPeriod])
   const d = current
   const ok = d.status === 'OK'
   const adjustmentNeeded = -d.diferenca
@@ -27,9 +36,9 @@ export default function DMPLReconciliationPage() {
   ]
 
   return <main className="content" style={{ marginLeft: 0, width: '100%', maxWidth: 1400, margin: '0 auto' }}>
-    <header><div><small>CONTROLADORIA FINANCEIRA</small><h1>DMPL</h1><p>Demonstrações integradas • Regime de competência</p></div><div style={{ display: 'grid', gap: 10, justifyItems: 'end' }}><ReportPeriodFilter value={period} onChange={setPeriod} years={[2026]} /><div className="period">{ok ? '✓ RECONCILIADO' : '! PENDÊNCIA'}</div></div></header>
+    <header><div><small>CONTROLADORIA FINANCEIRA</small><h1>DMPL</h1><p>Demonstrações integradas • Regime de competência</p></div><div style={{ display: 'grid', gap: 10, justifyItems: 'end' }}><ReportPeriodFilter value={period} onChange={setPeriod} years={availableYears.length ? availableYears : [2026]} /><div className="period">{ok ? '✓ RECONCILIADO' : '! PENDÊNCIA'}</div></div></header>
 
-    {period.view === 'comparativo' && previous && <section className="panel wide" style={{ marginBottom: 18 }}><div className="panel-title"><h2>Comparativo da movimentação do PL</h2><span>{REPORT_MONTHS[period.month - 2]} × {REPORT_MONTHS[period.month - 1]} / {period.year}</span></div><div className="indicator-grid"><Metric title="Lucro líquido" value={brl(d.lucroLiquido)} delta={d.lucroLiquido - previous.lucroLiquido} /><Metric title="PL calculado" value={brl(d.plCalculado)} delta={d.plCalculado - previous.plCalculado} /><Metric title="PL contábil" value={brl(d.plContabil)} delta={d.plContabil - previous.plContabil} /><Metric title="Diferença" value={brl(Math.abs(d.diferenca))} delta={Math.abs(d.diferenca) - Math.abs(previous.diferenca)} /></div></section>}
+    {period.view === 'comparativo' && <section className="panel wide" style={{ marginBottom: 18 }}><div className="panel-title"><h2>Comparativo da movimentação do PL</h2><span>{previous ? `${REPORT_MONTHS[previousPeriod.month - 1]} / ${previousPeriod.year} × ${REPORT_MONTHS[period.month - 1]} / ${period.year}` : 'Sem período anterior disponível'}</span></div>{previous ? <div className="indicator-grid"><Metric title="Lucro líquido" value={brl(d.lucroLiquido)} delta={d.lucroLiquido - previous.lucroLiquido} /><Metric title="PL calculado" value={brl(d.plCalculado)} delta={d.plCalculado - previous.plCalculado} /><Metric title="PL contábil" value={brl(d.plContabil)} delta={d.plContabil - previous.plContabil} /><Metric title="Diferença" value={brl(Math.abs(d.diferenca))} delta={Math.abs(d.diferenca) - Math.abs(previous.diferenca)} /></div> : <div className="note">Não há dados disponíveis para o período imediatamente anterior.</div>}</section>}
 
     <section className="panel wide"><div className="panel-title"><div><h2>DMPL — Ponte do Patrimônio Líquido</h2><span>{periodLabel(period)}</span></div><span>{period.view === 'mensal' ? 'MÊS' : period.view === 'acumulado' ? 'ACUMULADO' : 'MÊS COMPARADO'}</span></div>
       <div className="table-wrap"><table><tbody>
@@ -50,6 +59,11 @@ export default function DMPLReconciliationPage() {
   </main>
 }
 
+function hasCompetence(year: number, month: number) {
+  const key = competence(year, month)
+  return integratedJournal.some(e => (e.competence || e.date.slice(0, 7)) === key)
+}
+
 function buildForPeriod(period: ReportPeriod) {
   const selected = competence(period.year, period.month)
   const entries = period.view === 'mensal' || period.view === 'comparativo'
@@ -64,5 +78,5 @@ function periodLabel(period: ReportPeriod) {
 }
 
 function Metric({ title, value, delta }: { title: string; value: string; delta: number }) {
-  return <div className="indicator"><span>{title}</span><strong>{value}</strong><small>Δ vs. mês anterior: {brl(delta)}</small></div>
+  return <div className="indicator"><span>{title}</span><strong>{value}</strong><small>Δ vs. período anterior: {brl(delta)}</small></div>
 }
