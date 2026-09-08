@@ -11,7 +11,7 @@ export const defaultScenarios:Scenario[] = [
 
 export function runScenario(base:ProjectionPeriod[], scenario:Scenario):ScenarioResult {
   let cash=base[0]?.openingCash||0
-  const periods=base.map(p=>{
+  const periods:ProjectionPeriod[]=base.map(p=>{
     const openingCash=cash
     const receivables=p.receivables*scenario.revenueFactor
     const payables=p.payables*scenario.payablesFactor
@@ -19,7 +19,8 @@ export function runScenario(base:ProjectionPeriod[], scenario:Scenario):Scenario
     const capex=p.capex*scenario.capexFactor
     const projectedNet=receivables-payables+financing-capex
     cash+=projectedNet
-    return {...p,openingCash,receivables,payables,financing,capex,projectedNet,closingCash:cash,risk:cash<0?'critical':cash<openingCash*0.2?'attention':'normal'}
+    const risk:ProjectionPeriod['risk']=cash<0?'critical':cash<openingCash*0.2?'attention':'normal'
+    return {...p,openingCash,receivables,payables,financing,capex,projectedNet,closingCash:cash,risk}
   })
   const minimumCash=periods.length?Math.min(...periods.map(p=>p.closingCash)):cash
   const minimumMonth=periods.find(p=>p.closingCash===minimumCash)?.month||'—'
