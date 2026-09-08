@@ -25,7 +25,7 @@ export default function Governanca() {
   const critical = openActions.filter((a) => a.priority === 'Crítica' || a.priority === 'Alta')
 
   function closeAction(item: ActionPlanItem) {
-    const updated = { ...item, status: 'Concluído' as const, actualImpact: item.actualImpact || item.expectedImpact }
+    const updated = { ...item, status: 'Concluído' as const, actualImpact: item.actualImpact || item.expectedImpact, updatedAt: new Date().toISOString() }
     const next = actions.map((a) => a.id === item.id ? updated : a)
     writeActionPlan(next)
     setActions(next)
@@ -48,7 +48,7 @@ export default function Governanca() {
       <Metric title="Ações abertas" value={String(openActions.length)} /><Metric title="Ações críticas" value={String(critical.length)} /><Metric title="Ações atrasadas" value={String(overdue.length)} /><Metric title="Vencem em 7 dias" value={String(dueSoon.length)} /><Metric title="Reuniões realizadas" value={String(meetings.filter((m) => m.status === 'Realizada').length)} />
     </div>
 
-    <section className="panel wide"><div className="panel-title"><div><h2>1. Alertas que exigem gestão</h2><span>{diagnosisSummary(data, accounting)}</span></div><a href="/alertas-gerenciais" style={{ fontWeight: 800 }}>Ver cockpit de alertas →</a></div>
+    <section className="panel wide"><div className="panel-title"><div><h2>1. Alertas que exigem gestão</h2><span>{diagnosisSummary(diagnoses)}</span></div><a href="/alertas-gerenciais" style={{ fontWeight: 800 }}>Ver cockpit de alertas →</a></div>
       <div style={{ display: 'grid', gap: 10 }}>{diagnoses.slice(0, 5).map((d) => <div className="note" key={d.key}><strong>{d.title}</strong><p style={{ margin: '4px 0' }}>{d.signal}</p><small>Hipótese: {d.hypothesis}</small></div>)}</div>
     </section>
 
@@ -67,7 +67,7 @@ export default function Governanca() {
 
 function addDays(date: string, days: number) { const d = new Date(`${date}T12:00:00`); d.setDate(d.getDate() + days); return d.toISOString().slice(0, 10) }
 function Metric({ title, value }: { title: string; value: string }) { return <div className="card"><span>{title}</span><strong>{value}</strong><small>Governança</small></div> }
-function ActionRow({ item, onClose }: { item: ActionPlanItem; onClose: () => void }) { const late = !!item.dueDate && item.dueDate < today(); return <article className="note" style={{ borderLeft: `4px solid ${item.priority === 'Crítica' || late ? '#ef4444' : '#f59e0b'}` }}><div className="panel-title"><div><strong>{item.title}</strong><p style={{ margin: '4px 0' }}>{item.area} • {item.responsible || 'Responsável não definido'}</p></div><span>{item.priority}</span></div><small>Prazo: {item.dueDate || 'não definido'} {late ? '• ATRASADA' : ''}</small><p style={{ margin: '6px 0' }}>{item.action}</p><button onClick={onClose}>Marcar como concluída</button></article> }
+function ActionRow({ item, onClose }: { item: ActionPlanItem; onClose: () => void }) { const late = !!item.dueDate && item.dueDate < today(); return <article className="note" style={{ borderLeft: `4px solid ${item.priority === 'Crítica' || late ? '#ef4444' : '#f59e0b'` }}><div className="panel-title"><div><strong>{item.title}</strong><p style={{ margin: '4px 0' }}>{item.area} • {item.responsible || 'Responsável não definido'}</p></div><span>{item.priority}</span></div><small>Prazo: {item.dueDate || 'não definido'} {late ? '• ATRASADA' : ''}</small><p style={{ margin: '6px 0' }}>{item.action}</p><button onClick={onClose}>Marcar como concluída</button></article> }
 function MeetingRow({ meeting }: { meeting: GovernanceMeeting }) { return <article className="note"><div className="panel-title"><strong>{meeting.title}</strong><span>{meeting.status}</span></div><small>{meeting.date} • {meeting.competence}</small><p><strong>Participantes:</strong> {meeting.participants || 'Não informado'}</p><p><strong>Decisões:</strong> {meeting.decisions || 'Não informado'}</p><p><strong>Evidência:</strong> {meeting.evidence || 'Não registrada'}</p></article> }
 function Field({ label, value, onChange, type = 'text' }: { label: string; value: string; onChange: (v: string) => void; type?: string }) { return <label style={{ display: 'grid', gap: 5 }}><small>{label}</small><input type={type} value={value} onChange={(e) => onChange(e.target.value)} /></label> }
 function TextArea({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) { return <label style={{ display: 'grid', gap: 5, margin: '12px 0' }}><small>{label}</small><textarea rows={4} value={value} onChange={(e) => onChange(e.target.value)} /></label> }
