@@ -1,14 +1,9 @@
 'use client'
 
 import { useMemo } from 'react'
+import type { ReportPeriod } from '@/lib/report-period'
 
-export type ReportView = 'mensal' | 'acumulado' | 'comparativo'
-
-export type ReportPeriod = {
-  year: number
-  month: number
-  view: ReportView
-}
+export type { ReportPeriod, ReportView } from '@/lib/report-period'
 
 type Props = {
   value: ReportPeriod
