@@ -5,16 +5,15 @@ import Link from 'next/link'
 import { chartOfAccounts, sampleJournal, type JournalEntry } from '@/lib/accounting-core'
 import { journalFromLocalStorage } from '@/lib/financial-accounting-integration'
 import { buildLedger } from '@/lib/ledger-engine'
+import ReportPeriodFilter, { type ReportPeriod } from '@/components/report-period-filter'
+import { REPORT_MONTHS, competence } from '@/lib/report-period'
 
-const brl = (n: number) => n.toLocaleString('pt-BR', {
-  style: 'currency',
-  currency: 'BRL',
-  maximumFractionDigits: 0,
-})
+const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 
 export default function RazaoPage() {
   const [journal, setJournal] = useState<JournalEntry[]>(sampleJournal)
   const [integrated, setIntegrated] = useState(false)
+  const [period, setPeriod] = useState<ReportPeriod>({ year: 2026, month: 12, view: 'mensal' })
 
   useEffect(() => {
     const result = journalFromLocalStorage()
@@ -24,10 +23,21 @@ export default function RazaoPage() {
     }
   }, [])
 
-  const ledger = useMemo(() => buildLedger(journal, chartOfAccounts), [journal])
+  const scopedJournal = useMemo(() => {
+    const key = (entry: JournalEntry) => entry.competence || entry.date.slice(0, 7)
+    const months = period.view === 'mensal' || period.view === 'comparativo'
+      ? [period.month]
+      : Array.from({ length: period.month }, (_, i) => i + 1)
+    const keys = new Set(months.map(m => competence(period.year, m)))
+    const opening = journal.filter(entry => key(entry) < competence(period.year, 1) || entry.id.startsWith('OPENING-'))
+    return [...opening, ...journal.filter(entry => keys.has(key(entry)))]
+  }, [journal, period])
+
+  const ledger = useMemo(() => buildLedger(scopedJournal, chartOfAccounts), [scopedJournal])
   const totalDebit = ledger.reduce((sum, item) => sum + item.debit, 0)
   const totalCredit = ledger.reduce((sum, item) => sum + item.credit, 0)
   const balanced = Math.abs(totalDebit - totalCredit) < 0.01
+  const label = period.view === 'mensal' ? `${REPORT_MONTHS[period.month - 1]}/${period.year}` : `Jan–${REPORT_MONTHS[period.month - 1]}/${period.year}`
 
   return (
     <main className="content" style={{ marginLeft: 0, width: '100%', maxWidth: 1400, margin: '0 auto' }}>
@@ -37,25 +47,25 @@ export default function RazaoPage() {
           <h1>Razão Contábil</h1>
           <p>Movimentação por conta • Saldos acumulados • Origem no Diário</p>
         </div>
-        <div className="period">2026</div>
+        <ReportPeriodFilter value={period} onChange={setPeriod} years={[2026]} />
       </header>
 
       <div style={{ marginBottom: 18 }}>
         <Link href="/contabil" style={{ color: '#17345f', fontWeight: 700, textDecoration: 'none' }}>← Contabilidade</Link>
         <span style={{ margin: '0 10px', color: '#9aa6b2' }}>•</span>
-        <span style={{ color: '#66758a' }}>{integrated ? 'Base financeira integrada' : 'Base demonstrativa'}</span>
+        <span style={{ color: '#66758a' }}>{integrated ? 'Base financeira integrada' : 'Base demonstrativa'} • {label}</span>
       </div>
 
       <div className="cards">
-        <div className="card"><span>Contas movimentadas</span><strong>{ledger.length}</strong><small>Contas com lançamentos</small></div>
-        <div className="card"><span>Total Débitos</span><strong>{brl(totalDebit)}</strong><small>Movimentação do Diário</small></div>
-        <div className="card"><span>Total Créditos</span><strong>{brl(totalCredit)}</strong><small>Movimentação do Diário</small></div>
+        <div className="card"><span>Contas movimentadas</span><strong>{ledger.length}</strong><small>{label}</small></div>
+        <div className="card"><span>Total Débitos</span><strong>{brl(totalDebit)}</strong><small>Período filtrado</small></div>
+        <div className="card"><span>Total Créditos</span><strong>{brl(totalCredit)}</strong><small>Período filtrado</small></div>
         <div className="card"><span>Status</span><strong>{balanced ? '✓ OK' : '! Revisar'}</strong><small>{balanced ? 'Razão balanceado' : 'Diferença entre débitos e créditos'}</small></div>
       </div>
 
       <section className="panel wide">
-        <div className="panel-title"><h2>Razão por conta</h2><span>{integrated ? 'Diário integrado' : 'Base demonstrativa'}</span></div>
-        <div className="note">O Razão é derivado do <strong>mesmo Diário utilizado pela contabilidade</strong>. O saldo considera a natureza da conta: devedora (débito − crédito) ou credora (crédito − débito).</div>
+        <div className="panel-title"><h2>Razão por conta</h2><span>{label}</span></div>
+        <div className="note">O Razão é derivado do <strong>mesmo Diário utilizado pela contabilidade</strong>. Mensal considera a competência selecionada; Acumulado soma janeiro até o mês escolhido. O filtro não altera a origem dos lançamentos.</div>
 
         {ledger.map(item => (
           <div key={item.account.code} style={{ marginTop: 18, border: '1px solid #e3e8ef', borderRadius: 10, overflow: 'hidden' }}>
@@ -93,7 +103,7 @@ export default function RazaoPage() {
 
       <section className="panel">
         <div className="panel-title"><h2>Próximo elo da cadeia</h2><span>Balancete de Verificação</span></div>
-        <div className="note"><strong>Diário → Razão → Balancete → BP + DRE + DFC + DMPL.</strong> Agora que o Razão está preparado para consumir o Diário integrado, o próximo passo é consolidar o Balancete como fonte única para as demonstrações.</div>
+        <div className="note"><strong>Diário → Razão → Balancete → BP + DRE + DFC + DMPL.</strong> O período selecionado agora acompanha a leitura do Razão sem romper a cadeia contábil.</div>
       </section>
     </main>
   )
