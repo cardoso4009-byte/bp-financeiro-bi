@@ -12,7 +12,7 @@ const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',
 const pct=(n:number)=>`${(n*100).toFixed(1).replace('.',',')}%`
 function empty(){return {revenue:0,opex:0,capex:0,financing:0}}
 function sum(entries:any[]){return entries.reduce((a,e)=>{const v=Math.abs(Number(e.value)||0);if(e.type==='Receita')a.revenue+=v;if(e.type==='Despesa')a.opex+=v;if(e.type==='CAPEX')a.capex+=v;if(e.type==='Financiamento')a.financing+=v;return a},empty())}
-function sumBudget(items:any[],months:string[]){return items.reduce((a,x)=>{const month=x.month;const index=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'].indexOf(month)+1;if(!months.includes(competence(2026,index)))return a;const v=Math.abs(Number(x.budget)||0);if(x.type==='Receita')a.revenue+=v;if(x.type==='Despesa')a.opex+=v;if(x.type==='CAPEX')a.capex+=v;if(x.type==='Financiamento')a.financing+=v;return a},empty())}
+function sumBudget(items:any[],months:string[]){return items.reduce((a,x)=>{const month=x.month;const index=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'].indexOf(month)+1;const years=months.map(m=>m.slice(0,4));const matching=years.some(y=>months.includes(competence(Number(y),index)));if(!matching)return a;const v=Math.abs(Number(x.budget)||0);if(x.type==='Receita')a.revenue+=v;if(x.type==='Despesa')a.opex+=v;if(x.type==='CAPEX')a.capex+=v;if(x.type==='Financiamento')a.financing+=v;return a},empty())}
 export default function PerformanceGerencial(){
  const source=useMemo(()=>readFinancialSource(),[]),actions=useMemo(()=>readActionPlan(),[]),budget=useMemo(()=>readBudgetPlan(),[])
  const [period,setPeriod]=useState<ReportPeriod>({...DEFAULT_REPORT_PERIOD,month:12})
