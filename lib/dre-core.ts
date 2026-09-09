@@ -35,5 +35,5 @@ export const dreCoreMonths:DRECoreMonth[]=financialCore.map((m:FinancialMonth)=>
 })
 
 export const dreCoreByMonth=new Map(
-  dreCoreMonths.map((item,i)=>[`2026-${MONTH_KEYS[i]}`,item])
+  dreCoreMonths.map((item,i)=>[`${item.year}-${MONTH_KEYS[i]}`,item])
 )
