@@ -1,13 +1,12 @@
 'use client'
 import {useMemo,useState} from 'react'
-import {financialCore} from '@/lib/financial-core'
-import {dreCoreByMonth,type DRECoreMonth} from '@/lib/dre-core'
+import {dreCoreByMonth,dreCoreMonths,type DRECoreMonth} from '@/lib/dre-core'
 import ReportPeriodFilter,{type ReportPeriod} from '@/components/report-period-filter'
 import {REPORT_MONTHS,competence} from '@/lib/report-period'
 
 const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0})
 const pct=(n:number)=>`${n.toFixed(1).replace('.',',')}%`
-const availableYears=Array.from(new Set(financialCore.map((_,i)=>2026))).sort((a,b)=>a-b)
+const availableYears=Array.from(new Set(dreCoreMonths.map(m=>m.year))).sort((a,b)=>a-b)
 type M={revenue:number;costs:number;opex:number;depreciation:number;fin:number;taxes:number;gross:number;ebitda:number;op:number;net:number}
 const empty=():M=>({revenue:0,costs:0,opex:0,depreciation:0,fin:0,taxes:0,gross:0,ebitda:0,op:0,net:0})
 const coreToM=(m:DRECoreMonth):M=>({revenue:m.revenue,costs:m.costs,opex:m.opex,depreciation:m.depreciation,fin:m.financialResult,taxes:m.taxes,gross:m.revenue-m.costs,ebitda:m.ebitda,op:m.operatingResult,net:m.netIncome})
@@ -24,8 +23,9 @@ export default function DREGerencial(){
  const prior=useMemo(()=>{
    const previousYear=period.month===1?period.year-1:period.year
    const previousMonth=period.month===1?12:period.month-1
-   return data.get(competence(previousYear,previousMonth))||null
- },[period,data])
+   const key=competence(previousYear,previousMonth)
+   return dreCoreByMonth.get(key)?coreToM(dreCoreByMonth.get(key)!):null
+ },[period])
  const label=period.view==='mensal'?REPORT_MONTHS[period.month-1]:`Jan–${REPORT_MONTHS[period.month-1]}`
  const change=(a:number,b:number)=>b===0?0:(a-b)/Math.abs(b)*100
  return <main className="content" style={{marginLeft:0,width:'100%',maxWidth:1450,margin:'0 auto'}}>
