@@ -9,10 +9,15 @@ import ReportPeriodFilter from '@/components/report-period-filter'
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 const competence = (year: number, month: number) => `${year}-${String(month).padStart(2, '0')}`
-const availableYears = Array.from(new Set(integratedJournal.map(e => Number((e.competence || e.date.slice(0, 7)).slice(0, 4))))).filter(Number.isFinite).sort((a, b) => a - b)
+const entryCompetence = (entry: typeof integratedJournal[number]) => entry.competence || entry.date.slice(0, 7)
+const availableCompetences = Array.from(new Set(integratedJournal.map(entryCompetence))).sort()
+const availableYears = Array.from(new Set(availableCompetences.map(value => Number(value.slice(0, 4))))).filter(Number.isFinite).sort((a, b) => a - b)
+const latestCompetence = availableCompetences.at(-1)
+const defaultYear = latestCompetence ? Number(latestCompetence.slice(0, 4)) : 2026
+const defaultMonth = latestCompetence ? Number(latestCompetence.slice(5, 7)) : 12
 
 export default function DMPLReconciliationPage() {
-  const [period, setPeriod] = useState<ReportPeriod>({ year: availableYears[0] ?? 2026, month: 12, view: 'mensal' })
+  const [period, setPeriod] = useState<ReportPeriod>({ year: defaultYear, month: defaultMonth, view: 'mensal' })
   const current = useMemo(() => buildForPeriod(period), [period])
   const previousPeriod = useMemo(() => {
     const previousMonth = period.month === 1 ? 12 : period.month - 1
@@ -61,15 +66,32 @@ export default function DMPLReconciliationPage() {
 
 function hasCompetence(year: number, month: number) {
   const key = competence(year, month)
-  return integratedJournal.some(e => (e.competence || e.date.slice(0, 7)) === key)
+  return integratedJournal.some(entry => entryCompetence(entry) === key)
 }
 
 function buildForPeriod(period: ReportPeriod) {
   const selected = competence(period.year, period.month)
   const entries = period.view === 'mensal' || period.view === 'comparativo'
-    ? integratedJournal.filter(e => (e.competence || e.date.slice(0, 7)) === selected)
-    : integratedJournal.filter(e => { const c = e.competence || e.date.slice(0, 7); return c >= `${period.year}-01` && c <= selected })
-  return buildDmpl(entries, openingBalance.equity, 0, 0)
+    ? integratedJournal.filter(entry => entryCompetence(entry) === selected)
+    : integratedJournal.filter(entry => { const c = entryCompetence(entry); return c >= `${period.year}-01` && c <= selected })
+
+  // Em visão mensal/comparativa, a abertura é o PL de fechamento da
+  // competência anterior. Em acumulado, a abertura é o saldo de 31/12.
+  const plInicial = period.view === 'acumulado'
+    ? openingBalance.equity
+    : openingBalance.equity + buildNetIncomeUntil(period.year, period.month - 1)
+
+  return buildDmpl(entries, plInicial, 0, 0)
+}
+
+function buildNetIncomeUntil(year: number, month: number) {
+  if (month <= 0) return buildNetIncomeForEntries(integratedJournal.filter(entry => entryCompetence(entry).slice(0, 4) < String(year)))
+  const end = competence(year, month)
+  return buildNetIncomeForEntries(integratedJournal.filter(entry => entryCompetence(entry) < end))
+}
+
+function buildNetIncomeForEntries(entries: typeof integratedJournal) {
+  return buildDmpl(entries, 0, 0, 0).lucroLiquido
 }
 
 function periodLabel(period: ReportPeriod) {
