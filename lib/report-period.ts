@@ -6,7 +6,7 @@ export type ReportPeriod = {
   view: ReportView
 }
 
-export const REPORT_MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'] as const
+export const REPORT_MONTHS: readonly string[] = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
 export const DEFAULT_REPORT_PERIOD: ReportPeriod = {
   year: 2026,
