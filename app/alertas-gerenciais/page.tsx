@@ -16,15 +16,12 @@ export default function AlertasGerenciais(){
  const [period,setPeriod]=useState<ReportPeriod>(DEFAULT_REPORT_PERIOD)
  const selectedCompetence=competence(period.year,period.month)
  const previousCompetence=period.month===1?competence(period.year-1,12):competence(period.year,period.month-1)
- const periodEntries=useMemo(()=>source.entries.filter((x:any)=>{
-  const c=String(x.competence??'')
-  if(period.view==='mensal'||period.view==='comparativo') return c===selectedCompetence
-  return c>=competence(period.year,1)&&c<=selectedCompetence
- }),[source.entries,period.view,selectedCompetence,period.year])
+ const periodEntries=useMemo(()=>source.entries.filter((x:any)=>{const c=String(x.competence??'');if(period.view==='mensal'||period.view==='comparativo') return c===selectedCompetence;return c>=competence(period.year,1)&&c<=selectedCompetence}),[source.entries,period.view,selectedCompetence,period.year])
  const comparisonEntries=useMemo(()=>source.entries.filter((x:any)=>String(x.competence??'')===previousCompetence),[source.entries,previousCompetence])
  const buildAlerts=useMemo(()=>{
-  const build=(e:any[],asOf:string):Alert[]=>{
-   const overdue=e.filter((x:any)=>x.status==='Em aberto'&&x.dueDate&&new Date(x.dueDate)<new Date(`${asOf}-01`))
+  const build=(e:any[],year:number,month:number):Alert[]=>{
+   const periodEnd=new Date(year,month,0,23,59,59,999)
+   const overdue=e.filter((x:any)=>x.status==='Em aberto'&&x.dueDate&&new Date(x.dueDate)<=periodEnd)
    const receivable=overdue.filter((x:any)=>x.type==='Receita').reduce((s:number,x:any)=>s+Math.abs(x.value),0)
    const payable=overdue.filter((x:any)=>x.type==='Despesa').reduce((s:number,x:any)=>s+Math.abs(x.value),0)
    const open=e.filter((x:any)=>x.status==='Em aberto')
@@ -41,8 +38,8 @@ export default function AlertasGerenciais(){
     {level:m.cash<0?'critical':m.cash<totalRevenue*.05?'attention':'normal',title:'Impacto em caixa',impact:brl(m.cash),reason:'O indicador consolida o efeito dos lançamentos com impacto efetivo em caixa.',action:'Abrir Fluxo de Caixa para detalhar entradas e saídas.',url:'/fluxo-caixa',value:Math.abs(m.cash)},
    ] as Alert[]
   }
-  return {current:build(periodEntries,selectedCompetence),previous:build(comparisonEntries,previousCompetence)}
- },[periodEntries,comparisonEntries,selectedCompetence,previousCompetence])
+  return {current:build(periodEntries,period.year,period.month),previous:build(comparisonEntries,period.month===1?period.year-1:period.year,period.month===1?12:period.month-1)}
+ },[periodEntries,comparisonEntries,period.year,period.month])
  const alerts=buildAlerts.current
  const ordered=[...alerts].sort((a,b)=>rank(b.level)-rank(a.level))
  const critical=ordered.filter(a=>a.level==='critical').length
