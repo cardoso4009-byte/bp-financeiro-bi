@@ -7,7 +7,6 @@ import { ReportPeriodFilter } from '@/components/report-period-filter'
 import { DEFAULT_REPORT_PERIOD, competence, periodLabel, type ReportPeriod } from '@/lib/report-period'
 
 const brl = (n:number) => n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0})
-const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
 export default function FechamentoContabil(){
  const [period,setPeriod]=useState<ReportPeriod>({...DEFAULT_REPORT_PERIOD,month:2})
@@ -48,8 +47,7 @@ export default function FechamentoContabil(){
   <section className="panel wide">
    <div className="panel-title"><div><h2>Competência e status</h2><span>{periodLabel(period)}</span></div><span>Governança por competência</span></div>
    <ReportPeriodFilter value={period} onChange={setPeriod} years={[2025,2026]} showView={false} />
-   <div style={{display:'grid',gridTemplateColumns:'minmax(220px,1fr) minmax(220px,1fr)',gap:12,alignItems:'end',marginTop:14}}>
-    <label className="field"><span>Competência</span><select value={month} onChange={e=>{const [year,m]=e.target.value.split('-').map(Number);setPeriod(p=>({...p,year,month:m}))}}>{[2025,2026].flatMap(year=>monthNames.map((name,index)=>({value:`${year}-${String(index+1).padStart(2,'0')}`,name,year}))).map(m=><option key={m.value} value={m.value}>{m.name} / {m.year}</option>)}</select></label>
+   <div style={{display:'grid',gridTemplateColumns:'1fr',gap:12,marginTop:14}}>
     <div className="note" style={{margin:0}}><strong>Status: {currentStatus}</strong><br/>A competência selecionada é persistida no navegador. Última atualização: {state.updatedAt===new Date(0).toISOString()?'ainda não registrada':new Date(state.updatedAt).toLocaleString('pt-BR')}.</div>
    </div>
    <div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:14}}>
