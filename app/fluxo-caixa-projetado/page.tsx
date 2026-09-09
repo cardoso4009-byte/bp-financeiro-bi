@@ -49,15 +49,14 @@ export default function FluxoCaixaProjetado(){
 
   const rows=useMemo(()=>projection.filter(x=>currentCompetences.includes(x.competence)).slice(0,months),[projection,currentCompetences,months])
   const previousRows=useMemo(()=>projection.filter(x=>previousCompetences.includes(x.competence)),[projection,previousCompetences])
-  const selectedRows=period.view==='comparativo' && previousRows.length ? rows : rows
 
   const summary=useMemo(()=>({
-    receivables:selectedRows.reduce((s,x)=>s+x.receivables,0),
-    payables:selectedRows.reduce((s,x)=>s+x.payables,0),
-    financing:selectedRows.reduce((s,x)=>s+x.financing,0),
-    capex:selectedRows.reduce((s,x)=>s+x.capex,0),
-    net:selectedRows.reduce((s,x)=>s+x.projectedNet,0),
-  }),[selectedRows])
+    receivables:rows.reduce((s,x)=>s+x.receivables,0),
+    payables:rows.reduce((s,x)=>s+x.payables,0),
+    financing:rows.reduce((s,x)=>s+x.financing,0),
+    capex:rows.reduce((s,x)=>s+x.capex,0),
+    net:rows.reduce((s,x)=>s+x.projectedNet,0),
+  }),[rows])
 
   const minCash=rows.length?Math.min(...rows.map(x=>x.closingCash)):initialCash
   const minMonth=rows.find(x=>x.closingCash===minCash)?.month||'—'
@@ -67,9 +66,9 @@ export default function FluxoCaixaProjetado(){
   const variation=previousNet!==0?(summary.net-previousNet)/Math.abs(previousNet):null
 
   return <main className="content" style={{marginLeft:0,width:'100%',maxWidth:1450,margin:'0 auto'}}>
-    <header><div><small>TESOURARIA E PLANEJAMENTO</small><h1>Fluxo de Caixa Projetado</h1><p>Liquidez futura • compromissos • entradas esperadas • risco de caixa</p></div></header>
+    <header><div><small>TESOURARIA E PLANEJAMENTO</small><h1>Fluxo de Caixa Projetado</h1><p>Liquidez futura • compromissos • entradas esperadas • risco de caixa</p></div><ReportPeriodFilter value={period} onChange={setPeriod} years={[2026]}/></header>
 
-    <section className="panel wide"><ReportPeriodFilter value={period} onChange={setPeriod} years={[2025,2026]} /><div className="filters" style={{marginTop:12}}><label>Horizonte <select value={months} onChange={e=>setMonths(Number(e.target.value))}>{[3,6,9,12].map(n=><option key={n} value={n}>{n} meses</option>)}</select></label><label>Caixa inicial <input inputMode="decimal" value={initialCash} onChange={e=>setInitialCash(Number(e.target.value.replace(',','.'))||0)} style={{width:160}}/></label><span className="note">A projeção usa contas em aberto da base financeira. Não presume recebimentos ou pagamentos já realizados.</span></div></section>
+    <section className="panel wide"><div className="filters" style={{marginTop:0}}><label>Horizonte <select value={months} onChange={e=>setMonths(Number(e.target.value))}>{[3,6,9,12].map(n=><option key={n} value={n}>{n} meses</option>)}</select></label><label>Caixa inicial <input inputMode="decimal" value={initialCash} onChange={e=>setInitialCash(Number(e.target.value.replace(',','.'))||0)} style={{width:160}}/></label><span className="note">A projeção usa contas em aberto da base financeira. Não presume recebimentos ou pagamentos já realizados.</span></div></section>
 
     <div className="cards"><Card title="Caixa projetado final" value={rows.length?rows[rows.length-1].closingCash:initialCash}/><Card title="Menor caixa" value={minCash}/><Card title="Geração líquida" value={summary.net}/><Card title="Recebimentos previstos" value={summary.receivables}/></div>
 
