@@ -27,9 +27,7 @@ export default function FechamentoContabil(){
   setStatus(next.status)
  }
 
- const statusLabel=currentStatus==='ABERTO'
-  ? (overall?'LIBERADO PARA PRÉ-FECHAMENTO':'PENDÊNCIAS')
-  : currentStatus
+ const statusLabel=currentStatus==='ABERTO' ? (overall?'LIBERADO PARA PRÉ-FECHAMENTO':'PENDÊNCIAS') : currentStatus
  const statusClass=overall?'ok':'bad'
  const checkRows=[
   ['1. Livro Diário',c.checks.journal,'Partidas dobradas: cada lançamento deve ter Débito = Crédito.'],
