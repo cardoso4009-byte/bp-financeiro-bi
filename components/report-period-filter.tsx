@@ -1,8 +1,9 @@
 'use client'
 
 import { useMemo } from 'react'
-import { REPORT_MONTHS, type ReportPeriod, type ReportView } from '@/lib/report-period'
+import { DEFAULT_REPORT_PERIOD, REPORT_MONTHS, type ReportPeriod, type ReportView } from '@/lib/report-period'
 
+export { DEFAULT_REPORT_PERIOD }
 export type { ReportPeriod, ReportView } from '@/lib/report-period'
 
 type Props = {
@@ -14,7 +15,7 @@ type Props = {
 
 const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
-export default function ReportPeriodFilter({ value, onChange, years, showView = true }: Props) {
+export const ReportPeriodFilter = ({ value, onChange, years, showView = true }: Props) => {
   const availableYears = useMemo(() => years?.length ? years : [2026], [years])
   return <div className="report-period-filter">
     <style>{`
@@ -34,3 +35,5 @@ export default function ReportPeriodFilter({ value, onChange, years, showView = 
     {showView&&<div className="report-period-field"><label>Visão</label><div className="report-period-view"><button className={value.view==='mensal'?'active':''} onClick={()=>onChange({...value,view:'mensal'})}>Mensal</button><button className={value.view==='acumulado'?'active':''} onClick={()=>onChange({...value,view:'acumulado'})}>Acumulado</button><button className={value.view==='comparativo'?'active':''} onClick={()=>onChange({...value,view:'comparativo'})}>Comparativo</button></div></div>}
   </div>
 }
+
+export default ReportPeriodFilter
