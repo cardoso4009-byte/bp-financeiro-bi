@@ -28,3 +28,22 @@ export default function DfcIntegrada(){
    <ReportPeriodFilter value={period} onChange={setPeriod} years={[2026]} />
   </section>
   <div className="cards">
+   <div className="card"><span>Operacional</span><strong>{brl(current.operational)}</strong><small>{period.view==='acumulado'?'Jan até competência':'Competência selecionada'}</small></div>
+   <div className="card"><span>Investimentos</span><strong>{brl(current.investment)}</strong><small>Atividades de investimento</small></div>
+   <div className="card"><span>Financiamentos</span><strong>{brl(current.financing)}</strong><small>Atividades de financiamento</small></div>
+   <div className="card"><span>Variação líquida</span><strong>{brl(current.variation)}</strong><small>Operacional + Invest. + Financ.</small></div>
+  </div>
+  <section className="panel wide">
+   <div className="panel-title"><h2>Conciliação da DFC</h2><span>{ok?'✓ Caixa conciliado':'! Divergência'}</span></div>
+   <div className="rows"><div className="row"><span>Caixa Inicial</span><b>{brl(current.initialCash)}</b></div><div className="row"><span>(+) Fluxo Operacional</span><b>{brl(current.operational)}</b></div><div className="row"><span>(+) Fluxo de Investimentos</span><b>{brl(current.investment)}</b></div><div className="row"><span>(+) Fluxo de Financiamentos</span><b>{brl(current.financing)}</b></div><div className="row"><span>= Caixa Final pela DFC</span><b>{brl(current.finalCash)}</b></div><div className="row"><span>Caixa no Razão / Balanço</span><b>{brl(current.balanceCash)}</b></div><div className="row"><span>Diferença</span><b>{brl(current.reconciliation)}</b></div></div>
+  </section>
+  {period.view==='comparativo'&&<section className="panel wide">
+   <div className="panel-title"><div><h2>Análise comparativa</h2><span>Competência selecionada × período anterior</span></div><span>{variationPct===null?'Sem base comparável':`${variationPct>=0?'+':''}${variationPct.toFixed(1)}%`}</span></div>
+   <div className="rows"><div className="row"><span>Variação líquida — atual</span><b>{brl(current.variation)}</b></div><div className="row"><span>Variação líquida — anterior</span><b>{brl(previous.variation)}</b></div><div className="row"><span>Diferença</span><b>{brl(current.variation-previous.variation)}</b></div><div className="row"><span>Variação percentual</span><b>{variationPct===null?'n/a':`${variationPct>=0?'+':''}${variationPct.toFixed(1)}%`}</b></div></div>
+  </section>}
+  <section className="panel">
+   <div className="panel-title"><h2>Controle</h2><span>{ok?'OK':'REVISAR'}</span></div>
+   <div className="note">A regra de integração é: <strong>Caixa Inicial + Operacional + Investimentos + Financiamentos = Caixa Final</strong>. O Caixa Final deve coincidir com a conta Caixa do Balanço. Se houver diferença, o BI deve apontar a divergência.</div>
+  </section>
+ </main>
+}
