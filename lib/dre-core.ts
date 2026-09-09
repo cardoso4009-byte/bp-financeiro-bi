@@ -1,7 +1,5 @@
 import {financialCore,dreFromCore,type FinancialMonth} from './financial-core'
 
-const MONTH_KEYS=['01','02','03','04','05','06','07','08','09','10','11','12']
-
 export type DRECoreMonth={
   month:string
   year:number
@@ -14,6 +12,11 @@ export type DRECoreMonth={
   financialResult:number
   taxes:number
   netIncome:number
+}
+
+const monthNumber=(month:string,index:number)=>{
+  const match=month.match(/\d{1,2}$/)
+  return match ? Number(match[0]) : index+1
 }
 
 export const dreCoreMonths:DRECoreMonth[]=financialCore.map((m:FinancialMonth)=>{
@@ -35,5 +38,5 @@ export const dreCoreMonths:DRECoreMonth[]=financialCore.map((m:FinancialMonth)=>
 })
 
 export const dreCoreByMonth=new Map(
-  dreCoreMonths.map((item,i)=>[`2026-${MONTH_KEYS[i]}`,item])
+  dreCoreMonths.map((item,i)=>[`${item.year}-${String(monthNumber(item.month,i)).padStart(2,'0')}`,item])
 )

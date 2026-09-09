@@ -5,10 +5,11 @@ import { readFinancialSource } from '@/lib/financial-source'
 import type { FinancialEntry } from '@/lib/lancamentos-data'
 import { initialBudget, type BudgetPlan } from '@/lib/budget-plan-data'
 import { readBudgetPlan, writeBudgetPlan } from '@/lib/budget-realizado-store'
+import ReportPeriodFilter from '@/components/report-period-filter'
+import { DEFAULT_REPORT_PERIOD, REPORT_MONTHS, monthLabel, type ReportPeriod, type ReportView } from '@/lib/report-period'
 
 const brl = (n:number) => n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0})
 const pct = (n:number) => `${(n*100).toFixed(1).replace('.',',')}%`
-const months = initialBudget.map(r=>r.month)
 const thresholds = { warning: 0.03, critical: 0.05 }
 
 type Actual = { revenueActual:number; costActual:number; opexActual:number; capexActual:number }
@@ -17,8 +18,8 @@ type DeviationKind = 'revenue'|'expense'|'ebitda'
 type Severity = 'normal'|'attention'|'critical'
 type Analytic = { name:string; value:number; share:number }
 
-function actualFor(entries:FinancialEntry[], monthIndex:number):Actual {
-  const competence = `2026-${String(monthIndex+1).padStart(2,'0')}`
+function actualFor(entries:FinancialEntry[], year:number, month:number):Actual {
+  const competence = `${year}-${String(month).padStart(2,'0')}`
   const current = entries.filter(e=>e.competence===competence)
   const revenueActual = current.filter(e=>e.type==='Receita').reduce((s,e)=>s+Math.abs(e.value),0)
   const capexActual = current.filter(e=>e.type==='CAPEX').reduce((s,e)=>s+Math.abs(e.value),0)
@@ -56,20 +57,39 @@ function groupEntries(entries:FinancialEntry[],competences:Set<string>,type:'ope
   return [...map.entries()].map(([name,value])=>({name,value,share:total?value/total:0})).sort((a,b)=>b.value-a.value).slice(0,8)
 }
 
+function periodMonths(period:ReportPeriod){
+  if(period.view==='mensal'||period.view==='comparativo') return [period.month]
+  return Array.from({length:period.month},(_,i)=>i+1)
+}
+
+function previousMonth(period:ReportPeriod){
+  if(period.month===1) return {year:period.year-1,month:12}
+  return {year:period.year,month:period.month-1}
+}
+
 export default function BudgetRealizado(){
   const [budget,setBudget]=useState<BudgetPlan[]>(initialBudget)
   const [entries,setEntries]=useState<FinancialEntry[]>([])
-  const [start,setStart]=useState(0)
-  const [end,setEnd]=useState(11)
+  const [period,setPeriod]=useState<ReportPeriod>({...DEFAULT_REPORT_PERIOD,month:12})
   const [editing,setEditing]=useState(false)
   const [saved,setSaved]=useState(false)
 
   useEffect(()=>{ setBudget(readBudgetPlan()); setEntries(readFinancialSource().entries) },[])
   useEffect(()=>{ if(saved) writeBudgetPlan(budget) },[budget,saved])
 
-  const rows=useMemo<Row[]>(()=>budget.map((b,i)=>{const a=actualFor(entries,i);return {...b,...a,ebitdaBudget:b.revenue-b.cost-b.opex,ebitdaActual:a.revenueActual-a.costActual-a.opexActual}}),[budget,entries])
-  const visible=rows.slice(start,end+1)
+  const months=useMemo(()=>periodMonths(period),[period])
+  const previous=useMemo(()=>previousMonth(period),[period])
+  const rows=useMemo<Row[]>(()=>budget.map((b,i)=>{const a=actualFor(entries,period.year,i+1);return {...b,...a,ebitdaBudget:b.revenue-b.cost-b.opex,ebitdaActual:a.revenueActual-a.costActual-a.opexActual}}),[budget,entries,period.year])
+  const visible=useMemo(()=>months.map(m=>rows[m-1]).filter(Boolean),[months,rows])
+  const previousRow=useMemo<Row|undefined>(()=>{
+    if(period.view!=='comparativo') return undefined
+    const b=budget[previous.month-1]
+    if(!b) return undefined
+    const a=actualFor(entries,previous.year,previous.month)
+    return {...b,...a,ebitdaBudget:b.revenue-b.cost-b.opex,ebitdaActual:a.revenueActual-a.costActual-a.opexActual}
+  },[budget,entries,period.view,previous])
   const total=(field:keyof Row)=>visible.reduce((s,r)=>s+Number(r[field]||0),0)
+  const currentRow=visible[visible.length-1]
   const revenueVar=total('revenueActual')-total('revenue')
   const costVar=total('costActual')-total('cost')
   const opexVar=total('opexActual')-total('opex')
@@ -80,19 +100,38 @@ export default function BudgetRealizado(){
   const ebitdaPct=deviationPercent(total('ebitdaActual'),total('ebitdaBudget'))
   const monthlyAlerts=visible.map(r=>({month:r.month,revenue:deviationPercent(r.revenueActual,r.revenue),cost:deviationPercent(r.costActual,r.cost),opex:deviationPercent(r.opexActual,r.opex),ebitda:deviationPercent(r.ebitdaActual,r.ebitdaBudget)}))
   const criticalMonths=monthlyAlerts.filter(m=>[severity('revenue',m.revenue),severity('expense',m.cost),severity('expense',m.opex),severity('ebitda',m.ebitda)].includes('critical'))
-  const competences=new Set(visible.map((_,i)=>`2026-${String(start+i+1).padStart(2,'0')}`))
-  const opexAnalytics=useMemo(()=>groupEntries(entries,competences,'opex'),[entries,visible,start])
-  const capexAnalytics=useMemo(()=>groupEntries(entries,competences,'capex'),[entries,visible,start])
+  const competences=new Set(visible.map(r=>`${period.year}-${String(Number(REPORT_MONTHS.indexOf(r.month))+1).padStart(2,'0')}`))
+  const opexAnalytics=useMemo(()=>groupEntries(entries,competences,'opex'),[entries,competences])
+  const capexAnalytics=useMemo(()=>groupEntries(entries,competences,'capex'),[entries,competences])
   const capexBudget=total('capex'), capexActual=total('capexActual'), capexVar=capexActual-capexBudget
+
+  const comparison=useMemo(()=>{
+    if(period.view!=='comparativo'||!currentRow||!previousRow) return null
+    return {
+      current:currentRow,
+      previous:previousRow,
+      revenue: currentRow.revenueActual-previousRow.revenueActual,
+      cost: currentRow.costActual-previousRow.costActual,
+      opex: currentRow.opexActual-previousRow.opexActual,
+      ebitda: currentRow.ebitdaActual-previousRow.ebitdaActual,
+    }
+  },[period.view,currentRow,previousRow])
 
   function updateBudget(index:number,field:'revenue'|'cost'|'opex'|'capex',value:string){ const numeric=Number(value.replace(',','.')); setBudget(prev=>prev.map((r,i)=>i===index?{...r,[field]:Number.isFinite(numeric)?numeric:0}:r)); setSaved(true) }
 
+  const viewLabel=period.view==='mensal'?'Mensal':period.view==='acumulado'?'Acumulado':'Comparativo'
+  const periodLabel=period.view==='acumulado'?`Jan a ${monthLabel(period.month)}/${period.year}`:`${monthLabel(period.month)}/${period.year}`
+  const previousLabel=period.month===1?`Dez/${period.year-1}`:`${monthLabel(period.month-1)}/${period.year}`
+
   return <main className="content" style={{marginLeft:0,width:'100%',maxWidth:1450,margin:'0 auto'}}>
-    <header><div><small>PLANEJAMENTO E CONTROLADORIA</small><h1>Orçamento × Realizado</h1><p>Planejamento • execução • desvios • análise gerencial</p></div><div className="period-controls"><label>Período de análise</label><div><select value={start} onChange={e=>setStart(Math.min(Number(e.target.value),end))}>{months.map((m,i)=><option key={m} value={i}>Início: {m}/2026</option>)}</select><select value={end} onChange={e=>setEnd(Math.max(start,Number(e.target.value)))}>{months.map((m,i)=><option key={m} value={i}>Fim: {m}/2026</option>)}</select></div></div></header>
+    <header><div><small>PLANEJAMENTO E CONTROLADORIA</small><h1>Orçamento × Realizado</h1><p>Planejamento • execução • desvios • análise gerencial</p></div><ReportPeriodFilter value={period} onChange={setPeriod} years={[2026]}/></header>
+    <div className="report-period-context"><strong>Visão {viewLabel}</strong><span>{periodLabel}{period.view==='comparativo'?` × ${previousLabel}`:''}</span></div>
+
+    {period.view==='comparativo'&&comparison&&<section className="panel wide"><div className="panel-title"><h2>Comparativo do realizado</h2><span>{monthLabel(period.month)}/{period.year} × {previousLabel}</span></div><div className="cards"><Card title="Receita" value={comparison.current.revenueActual} sub={`Anterior ${brl(comparison.previous.revenueActual)} • ${pct(deviationPercent(comparison.current.revenueActual,comparison.previous.revenueActual))}`}/><Card title="OPEX" value={comparison.current.opexActual} sub={`Anterior ${brl(comparison.previous.opexActual)} • ${pct(deviationPercent(comparison.current.opexActual,comparison.previous.opexActual))}`}/><Card title="EBITDA" value={comparison.current.ebitdaActual} sub={`Anterior ${brl(comparison.previous.ebitdaActual)} • ${pct(deviationPercent(comparison.current.ebitdaActual,comparison.previous.ebitdaActual))}`}/><Card title="Variação EBITDA" value={comparison.ebitda} sub={comparison.ebitda>=0?'Melhora contra período anterior':'Queda contra período anterior'}/></div></section>}
 
     <div className="cards"><Card title="Receita Realizada" value={total('revenueActual')} sub={`Desvio ${brl(revenueVar)} • ${pct(revenuePct)}`}/><Card title="EBITDA Realizado" value={total('ebitdaActual')} sub={`Desvio ${brl(ebitdaVar)} • ${pct(ebitdaPct)}`}/><Card title="Desvio Receita" value={revenueVar} sub={`${isFavorable('revenue',revenueVar)?'Favorável':'Desfavorável'} • ${pct(revenuePct)}`}/><Card title="Desvio OPEX" value={opexVar} sub={`${isFavorable('expense',opexVar)?'Favorável':'Desfavorável'} • ${pct(opexPct)}`}/></div>
 
-    <section className="panel wide"><div className="panel-title"><h2>Visão mensal</h2><span>Orçamento × realizado • fonte: lançamentos</span></div><div className="table-wrap"><table><thead><tr><th>Indicador</th>{visible.map(r=><th key={r.month}>{r.month}</th>)}<th>Total</th></tr></thead><tbody>
+    <section className="panel wide"><div className="panel-title"><h2>{period.view==='comparativo'?'Mês selecionado × período anterior':'Orçamento × realizado'}</h2><span>{period.view==='acumulado'?'Acumulado desde janeiro':'Visão mensal'} • fonte: lançamentos</span></div><div className="table-wrap"><table><thead><tr><th>Indicador</th>{visible.map(r=><th key={r.month}>{r.month}</th>)}<th>Total</th></tr></thead><tbody>
       <Line label="Receita • Orçamento" rows={visible} field="revenue" total={total('revenue')}/><Line label="Receita • Realizado" rows={visible} field="revenueActual" total={total('revenueActual')}/><Line label="Custos • Orçamento" rows={visible} field="cost" total={total('cost')}/><Line label="Custos • Realizado" rows={visible} field="costActual" total={total('costActual')}/><Line label="OPEX • Orçamento" rows={visible} field="opex" total={total('opex')}/><Line label="OPEX • Realizado" rows={visible} field="opexActual" total={total('opexActual')}/><Line label="CAPEX • Orçamento" rows={visible} field="capex" total={total('capex')}/><Line label="CAPEX • Realizado" rows={visible} field="capexActual" total={total('capexActual')}/><Line label="EBITDA • Orçamento" rows={visible} field="ebitdaBudget" total={total('ebitdaBudget')}/><Line label="EBITDA • Realizado" rows={visible} field="ebitdaActual" total={total('ebitdaActual')}/>
     </tbody></table></div></section>
 
@@ -100,7 +139,7 @@ export default function BudgetRealizado(){
 
     <section className="panel wide"><div className="panel-title"><h2>Semáforo mensal</h2><span>Desvio percentual por indicador</span></div><div className="table-wrap"><table><thead><tr><th>Mês</th><th>Receita</th><th>Custos</th><th>OPEX</th><th>EBITDA</th></tr></thead><tbody>{monthlyAlerts.map(m=><tr key={m.month}><td><b>{m.month}</b></td><td>{statusDot(severity('revenue',m.revenue))} {pct(m.revenue)}</td><td>{statusDot(severity('expense',m.cost))} {pct(m.cost)}</td><td>{statusDot(severity('expense',m.opex))} {pct(m.opex)}</td><td>{statusDot(severity('ebitda',m.ebitda))} {pct(m.ebitda)}</td></tr>)}</tbody></table></div><div className="note">🟢 até 3% • 🟡 de 3% a 5% • 🔴 acima de 5%. Para Receita e EBITDA, o sinal positivo tende a ser favorável; para Custos e OPEX, o aumento do realizado tende a ser desfavorável.</div></section>
 
-    <section className="panel wide"><div className="panel-title"><h2>OPEX analítico</h2><span>Categoria • participação no realizado</span></div>{opexAnalytics.length===0?<div className="note">Não há despesas classificadas em OPEX no período selecionado.</div>:<div className="table-wrap"><table><thead><tr><th>Categoria</th><th>Realizado</th><th>Participação</th><th>Leitura</th></tr></thead><tbody>{opexAnalytics.map(r=><tr key={r.name}><td><b>{r.name}</b></td><td>{brl(r.value)}</td><td>{pct(r.share)}</td><td>{r.share>=0.3?'Principal concentração':r.share>=0.15?'Relevante':'Secundária'}</td></tr>)}</tbody></table></div>}<div className="note"><strong>Próxima camada:</strong> o orçamento atual é mensal e ainda não possui abertura por categoria. Por isso, não inventamos um orçamento por área. O sistema mostra o realizado por categoria e preserva o orçamento total para, na próxima etapa, permitir orçamento por conta e centro de custo.</div></section>
+    <section className="panel wide"><div className="panel-title"><h2>OPEX analítico</h2><span>Categoria • participação no realizado</span></div>{opexAnalytics.length===0?<div className="note">Não há despesas classificadas em OPEX no período selecionado.</div>:<div className="table-wrap"><table><thead><tr><th>Categoria</th><th>Realizado</th><th>Participação</th><th>Leitura</th></tr></thead><tbody>{opexAnalytics.map(r=><tr key={r.name}><td><b>{r.name}</b></td><td>{brl(r.value)}</td><td>{pct(r.share)}</td><td>{r.share>=0.3?'Principal concentração':r.share>=0.15?'Relevante':'Secundária'}</td></tr>)}</tbody></table></div>}<div className="note"><strong>Próxima camada:</strong> o orçamento atual é mensal e ainda não possui abertura por categoria. O sistema mostra o realizado por categoria e preserva o orçamento total para permitir, na próxima etapa, orçamento por conta e centro de custo.</div></section>
 
     <section className="panel wide"><div className="panel-title"><h2>CAPEX analítico</h2><span>Investimento planejado × realizado</span></div><div className="grid"><div className="note"><strong>Orçamento</strong><p>{brl(capexBudget)}</p></div><div className="note"><strong>Realizado</strong><p>{brl(capexActual)}</p></div><div className="note"><strong>Desvio</strong><p>{brl(capexVar)} • {pct(capexBudget?capexVar/capexBudget:0)}</p></div></div>{capexAnalytics.length>0&&<div className="table-wrap"><table><thead><tr><th>Categoria / projeto</th><th>Realizado</th><th>Participação</th></tr></thead><tbody>{capexAnalytics.map(r=><tr key={r.name}><td><b>{r.name}</b></td><td>{brl(r.value)}</td><td>{pct(r.share)}</td></tr>)}</tbody></table></div>}<div className="note"><strong>Governança:</strong> CAPEX permanece separado do OPEX. O próximo passo será cadastrar orçamento por projeto, acompanhar desembolso acumulado e conectar cada investimento ao impacto no fluxo de caixa projetado.</div></section>
 

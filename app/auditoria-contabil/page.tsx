@@ -1,15 +1,28 @@
+'use client'
+
+import { useMemo, useState } from 'react'
 import { auditEngine } from '@/lib/audit-engine'
+import { ReportPeriodFilter } from '@/components/report-period-filter'
+import { DEFAULT_REPORT_PERIOD, periodLabel, type ReportPeriod } from '@/lib/report-period'
+
 const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})
 const severityLabel=(s:string)=>s==='critical'?'CRÍTICA':s==='warning'?'ATENÇÃO':'INFORMATIVA'
 
 export default function AuditoriaContabil(){
- const a=auditEngine()
+ const [period,setPeriod]=useState<ReportPeriod>(DEFAULT_REPORT_PERIOD)
+ const a=useMemo(()=>auditEngine(),[])
  return <main className="content" style={{marginLeft:0,width:'100%',maxWidth:1400,margin:'0 auto'}}>
   <style>{`.audit-evidence-block{border:1px solid #e5e9ef;border-radius:10px;margin-top:12px;overflow:hidden;background:#fff}.audit-evidence-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#f8fafc;border-bottom:1px solid #e8ecf1;font-size:12px}.audit-evidence-head b{color:#24364e}.audit-status-ok,.audit-status-bad{font-size:9px;font-weight:800;letter-spacing:.06em;padding:5px 8px;border-radius:99px}.audit-status-ok{background:#e7f5ee;color:#1d8a58}.audit-status-bad{background:#fdeaea;color:#c33}.audit-evidence-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0}.audit-evidence-item{padding:13px 14px;border-right:1px solid #edf0f4;min-height:82px}.audit-evidence-item:last-child{border-right:0}.audit-evidence-item small{display:block;color:#718098;font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}.audit-evidence-item strong{display:block;color:#172033;font-size:13px}.audit-evidence-item span{display:block;color:#8793a4;font-size:10px;line-height:1.45;margin-top:4px}@media(max-width:700px){.audit-evidence-grid{grid-template-columns:1fr}.audit-evidence-item{border-right:0;border-bottom:1px solid #edf0f4}.audit-evidence-item:last-child{border-bottom:0}}`}</style>
   <header>
-   <div><small>CONTROLADORIA • AUDITORIA</small><h1>Auditoria Contábil</h1><p>Validação do motor: Diário → Razão → Balancete → Demonstrações</p></div>
+   <div><small>CONTROLADORIA • AUDITORIA</small><h1>Auditoria Contábil</h1><p>Validação estrutural do motor: Diário → Razão → Balancete → Demonstrações</p></div>
    <div className="period">{a.overall?'✓ MOTOR OK':'! PENDÊNCIAS'}</div>
   </header>
+
+  <section className="panel wide">
+   <div className="panel-title"><div><h2>Período de referência</h2><span>{periodLabel(period)}</span></div><span>Auditoria estrutural do motor</span></div>
+   <ReportPeriodFilter value={period} onChange={setPeriod} years={[2025,2026]} />
+   <div className="note" style={{marginTop:12}}>Esta tela é um controle de integridade do motor contábil e não uma demonstração financeira. O checklist é executado sobre a cadeia contábil completa; o período acima identifica a competência de referência para a análise e mantém o padrão visual do BI.</div>
+  </section>
 
   <div className="cards">
    <div className="card"><span>Checks executados</span><strong>{a.checks.length}</strong><small>Controles estruturais</small></div>

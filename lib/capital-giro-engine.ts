@@ -13,6 +13,7 @@ export type WorkingCapitalRow = {
   diasReceber: number
   diasEstoque: number
   diasFornecedores: number
+  cicloFinanceiro: number
 }
 
 const receitaMensal = [63000,67500,72000,70200,73800,76500,79200,72000,81000,82800,76500,85500]
@@ -28,7 +29,11 @@ export const workingCapitalData: WorkingCapitalRow[] = monthlyBalance.map((b, i)
   const tesouraria = capitalCirculanteLiquido - necessidadeCapitalGiro
   const receita = receitaMensal[i]
   const custo = custoMensal[i]
-  return { month: b.month, contasReceber: b.contasReceber, estoques: b.estoques, outrosAtivosOperacionais: outrosAtivos, fornecedores: b.fornecedores, outrasObrigacoesOperacionais: outrasObrigacoes, capitalCirculanteLiquido, necessidadeCapitalGiro, tesouraria, diasReceber: receita ? b.contasReceber / receita * 30 : 0, diasEstoque: custo ? b.estoques / custo * 30 : 0, diasFornecedores: custo ? b.fornecedores / custo * 30 : 0 }
+  const diasReceber = receita ? b.contasReceber / receita * 30 : 0
+  const diasEstoque = custo ? b.estoques / custo * 30 : 0
+  const diasFornecedores = custo ? b.fornecedores / custo * 30 : 0
+  const cicloFinanceiro = diasReceber + diasEstoque - diasFornecedores
+  return { month: b.month, contasReceber: b.contasReceber, estoques: b.estoques, outrosAtivosOperacionais: outrosAtivos, fornecedores: b.fornecedores, outrasObrigacoesOperacionais: outrasObrigacoes, capitalCirculanteLiquido, necessidadeCapitalGiro, tesouraria, diasReceber, diasEstoque, diasFornecedores, cicloFinanceiro }
 })
 
 export function workingCapitalDiagnosis(row: WorkingCapitalRow) {

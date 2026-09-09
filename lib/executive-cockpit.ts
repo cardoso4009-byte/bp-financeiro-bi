@@ -2,6 +2,7 @@ import { buildAccountingIndicatorCards } from './financial-indicators'
 import { buildFinancialDiagnosis, type Diagnosis } from './financial-diagnosis'
 import { monthlyBalance, monthlyData } from './monthly-data'
 import type { Indicator } from './financial-indicators'
+import type { ReportView } from './report-period'
 
 export type ExecutivePriority = {
  title: string
@@ -24,7 +25,7 @@ export type ExecutiveCockpit = {
  priorities: ExecutivePriority[]
 }
 
-export function buildExecutiveCockpit(index = monthlyBalance.length - 1, gerencial: Indicator[] = []): ExecutiveCockpit {
+export function buildExecutiveCockpit(index = monthlyBalance.length - 1, gerencial: Indicator[] = [], view: ReportView = 'mensal'): ExecutiveCockpit {
  const safe = Math.max(0, Math.min(index, monthlyBalance.length - 1))
  const balance = monthlyBalance[safe]
  const result = monthlyData[safe]
@@ -36,12 +37,24 @@ export function buildExecutiveCockpit(index = monthlyBalance.length - 1, gerenci
   signal: d.signal,
   action: d.action,
  }))
+
+ let revenue = result.receitaLiquida
+ let ebitda = result.ebitda
+ let netIncome = result.lucroLiquido
+
+ if (view === 'acumulado') {
+  const yearToDate = monthlyData.slice(0, safe + 1)
+  revenue = yearToDate.reduce((sum, item) => sum + item.receitaLiquida, 0)
+  ebitda = yearToDate.reduce((sum, item) => sum + item.ebitda, 0)
+  netIncome = yearToDate.reduce((sum, item) => sum + item.lucroLiquido, 0)
+ }
+
  return {
   month: balance.month,
-  revenue: result.receitaLiquida,
-  ebitda: result.ebitda,
-  ebitdaMargin: result.receitaLiquida ? result.ebitda / result.receitaLiquida : 0,
-  netIncome: result.lucroLiquido,
+  revenue,
+  ebitda,
+  ebitdaMargin: revenue ? ebitda / revenue : 0,
+  netIncome,
   closingCash: result.caixaFinal,
   workingCapital: accounting.snapshot.workingCapital,
   ncg: accounting.snapshot.ncg,

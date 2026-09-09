@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { closingEngine } from '@/lib/closing-engine'
 import { getClosingState, writeClosingState, canMoveToClosingStatus } from '@/lib/closing-state'
+import { ReportPeriodFilter } from '@/components/report-period-filter'
+import { DEFAULT_REPORT_PERIOD, competence, periodLabel, type ReportPeriod } from '@/lib/report-period'
 
 const brl = (n:number) => n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0})
-const monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
-const months = monthNames.map((name,index)=>({ value:`2026-${String(index+1).padStart(2,'0')}`, name }))
 
 export default function FechamentoContabil(){
- const [month,setMonth]=useState('2026-02')
+ const [period,setPeriod]=useState<ReportPeriod>({...DEFAULT_REPORT_PERIOD,month:2})
+ const month=competence(period.year,period.month)
  const [status,setStatus]=useState<'ABERTO'|'PRE_FECHAMENTO'|'FECHADO'>('ABERTO')
  const c=useMemo(()=>closingEngine(),[])
  const overall=c.checks.overall
@@ -25,9 +26,7 @@ export default function FechamentoContabil(){
   setStatus(next.status)
  }
 
- const statusLabel=currentStatus==='ABERTO'
-  ? (overall?'LIBERADO PARA PRÉ-FECHAMENTO':'PENDÊNCIAS')
-  : currentStatus
+ const statusLabel=currentStatus==='ABERTO' ? (overall?'LIBERADO PARA PRÉ-FECHAMENTO':'PENDÊNCIAS') : currentStatus
  const statusClass=overall?'ok':'bad'
  const checkRows=[
   ['1. Livro Diário',c.checks.journal,'Partidas dobradas: cada lançamento deve ter Débito = Crédito.'],
@@ -46,9 +45,9 @@ export default function FechamentoContabil(){
   </header>
 
   <section className="panel wide">
-   <div className="panel-title"><h2>Competência e status</h2><span>Persistência local</span></div>
-   <div style={{display:'grid',gridTemplateColumns:'minmax(220px,1fr) minmax(220px,1fr)',gap:12,alignItems:'end'}}>
-    <label className="field"><span>Competência</span><select value={month} onChange={e=>setMonth(e.target.value)}>{months.map(m=><option key={m.value} value={m.value}>{m.name} / 2026</option>)}</select></label>
+   <div className="panel-title"><div><h2>Competência e status</h2><span>{periodLabel(period)}</span></div><span>Governança por competência</span></div>
+   <ReportPeriodFilter value={period} onChange={setPeriod} years={[2025,2026]} showView={false} />
+   <div style={{display:'grid',gridTemplateColumns:'1fr',gap:12,marginTop:14}}>
     <div className="note" style={{margin:0}}><strong>Status: {currentStatus}</strong><br/>A competência selecionada é persistida no navegador. Última atualização: {state.updatedAt===new Date(0).toISOString()?'ainda não registrada':new Date(state.updatedAt).toLocaleString('pt-BR')}.</div>
    </div>
    <div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:14}}>
