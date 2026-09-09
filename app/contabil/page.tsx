@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { chartOfAccounts, sampleJournal, entryTotals, journalIsBalanced, type JournalEntry } from '@/lib/contabil-model'
 import { journalFromLocalStorage } from '@/lib/financial-accounting-integration'
 import ReportPeriodFilter, { DEFAULT_REPORT_PERIOD, type ReportPeriod } from '@/components/report-period-filter'
-import { competence, monthsUntil, periodLabel } from '@/lib/report-period'
+import { competence, periodLabel } from '@/lib/report-period'
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 const entryCompetence = (entry: JournalEntry) => entry.competence || entry.date.slice(0, 7)
@@ -37,23 +37,18 @@ export default function Contabil() {
 
   const selected = competence(period.year, period.month)
   const previous = period.month === 1 ? competence(period.year - 1, 12) : competence(period.year, period.month - 1)
-  const periodEntries = useMemo(() => {
-    const opening = journal.filter(entry => entryCompetence(entry) < '2026-01' && entryCompetence(entry) <= selected)
-    const movements = journal.filter(entry => {
-      const c = entryCompetence(entry)
-      if (period.view === 'mensal' || period.view === 'comparativo') return c === selected
-      return c >= `${period.year}-01` && c <= selected
-    })
-    return period.view === 'acumulado' ? [...opening, ...movements] : movements
-  }, [journal, period.view, period.year, selected])
+  const periodEntries = useMemo(() => journal.filter(entry => {
+    const c = entryCompetence(entry)
+    if (period.view === 'mensal' || period.view === 'comparativo') return c === selected
+    return c <= selected
+  }), [journal, period.view, selected])
 
   const previousEntries = useMemo(() => journal.filter(entry => entryCompetence(entry) === previous), [journal, previous])
-  const displayEntries = period.view === 'comparativo' ? periodEntries : periodEntries
-  const totalDebit = displayEntries.reduce((s, e) => s + entryTotals(e).debit, 0)
-  const totalCredit = displayEntries.reduce((s, e) => s + entryTotals(e).credit, 0)
+  const totalDebit = periodEntries.reduce((s, e) => s + entryTotals(e).debit, 0)
+  const totalCredit = periodEntries.reduce((s, e) => s + entryTotals(e).credit, 0)
   const previousDebit = previousEntries.reduce((s, e) => s + entryTotals(e).debit, 0)
   const previousCredit = previousEntries.reduce((s, e) => s + entryTotals(e).credit, 0)
-  const movementCount = displayEntries.filter(entry => entryCompetence(entry) >= '2026-01').length
+  const movementCount = periodEntries.length
   const label = periodLabel(period)
 
   return <main className="content" style={{ marginLeft: 0, width: '100%', maxWidth: 1400, margin: '0 auto' }}>
@@ -67,7 +62,7 @@ export default function Contabil() {
 
     <div className="cards">
       <div className="card"><span>Contas cadastradas</span><strong>{chartOfAccounts.length}</strong><small>Plano de contas gerencial</small></div>
-      <div className="card"><span>Lançamentos</span><strong>{displayEntries.length}</strong><small>{integrated ? 'Integrados da base financeira' : 'Base demonstrativa'} • {movementCount} movimentos</small></div>
+      <div className="card"><span>Lançamentos</span><strong>{movementCount}</strong><small>{integrated ? 'Integrados da base financeira' : 'Base demonstrativa'}</small></div>
       <div className="card"><span>Total Débitos</span><strong>{brl(totalDebit)}</strong><small>{period.view === 'comparativo' ? 'Competência selecionada' : label}</small></div>
       <div className="card"><span>Total Créditos</span><strong>{brl(totalCredit)}</strong><small>{period.view === 'comparativo' ? `Anterior: ${brl(previousCredit)}` : 'Movimentação'}</small></div>
     </div>
@@ -83,7 +78,7 @@ export default function Contabil() {
     </section>}
 
     <section className="panel">
-      <div className="panel-title"><h2>Controle de partidas dobradas</h2><span>{journalIsBalanced(displayEntries) ? '✓ Equilibrado' : '! Divergência'}</span></div>
+      <div className="panel-title"><h2>Controle de partidas dobradas</h2><span>{journalIsBalanced(periodEntries) ? '✓ Equilibrado' : '! Divergência'}</span></div>
       <div className="note">Regra fundamental: em cada lançamento, <strong>Total de Débitos = Total de Créditos</strong>. A base financeira agora pode gerar automaticamente as partidas contábeis.</div>
       {integrationErrors.length > 0 && <div className="note" style={{ borderLeft: '4px solid #c33' }}><strong>Atenção na integração:</strong> {integrationErrors.join(' • ')}</div>}
     </section>
@@ -91,8 +86,8 @@ export default function Contabil() {
     <section className="panel wide">
       <div className="panel-title"><h2>Livro Diário</h2><span>{integrated ? 'Origem: Base de Lançamentos' : 'Base demonstrativa'} • {label}</span></div>
       <div className="rows">
-        {displayEntries.length === 0 && <div className="note">Nenhum lançamento encontrado para o período selecionado.</div>}
-        {displayEntries.map(entry => {
+        {periodEntries.length === 0 && <div className="note">Nenhum lançamento encontrado para o período selecionado.</div>}
+        {periodEntries.map(entry => {
           const totals = entryTotals(entry)
           return <div key={entry.id} style={{ padding: '14px 0', borderBottom: '1px solid #e8e8e8' }}>
             <div className="row"><span><strong>{entry.date}</strong> • {entry.description}</span><b>{totals.balanced ? '✓ Balanceado' : '!'}</b></div>
