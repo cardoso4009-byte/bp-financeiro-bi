@@ -66,16 +66,19 @@ export function financialReconciliation(){
     compare('bp-equation','Equação patrimonial',balance.ativoTotal,balance.passivoTotal+balance.pl,'Ativo = Passivo + Patrimônio Líquido')
   })
 
-  // A DMPL de 2026 deve partir do PL de abertura de 31/12/2025.
-  // O lançamento OPENING-2025 já contém esse saldo; ele não representa
-  // movimentação de 2026 e, portanto, fica fora da ponte de resultados.
+  // A DMPL anual deve partir do PL de abertura de 31/12/2025.
+  // Filtramos pela data da competência de 2026 para excluir explicitamente
+  // o lançamento OPENING-2025, mesmo que a regra de competência seja alterada.
   const dmplOpening=openingBalance.equity
   const firstYear=financialCore[0]?.year ?? 2026
-  const dmplEntries=integratedJournal.filter(entry => (entry.competence ?? entry.date.slice(0,7)) >= `${firstYear}-01`)
+  const dmplEntries=integratedJournal.filter(entry => entry.date.slice(0,4) === String(firstYear))
   const dmpl=buildDmpl(dmplEntries,dmplOpening,0,0)
+  const expectedAnnualResult=financialCore.reduce((sum,core)=>sum+dreFromCore(core).lucroLiquido,0)
   const finalBalance=monthlyBalance[monthlyBalance.length-1]
   const dmplDifference=dmpl.plContabil-finalBalance.pl
   checks.push({id:'dmpl-bp-final-pl',month:'Dez',metric:'PL final da DMPL',sourceValue:finalBalance.pl,viewValue:dmpl.plContabil,difference:dmplDifference,ok:isOk(dmplDifference),detail:'DMPL integrada × PL final do Balanço'})
+  const dmplResultDifference=dmpl.lucroLiquido-expectedAnnualResult
+  checks.push({id:'dmpl-result-vs-core',month:String(firstYear),metric:'Resultado anual da DMPL',sourceValue:expectedAnnualResult,viewValue:dmpl.lucroLiquido,difference:dmplResultDifference,ok:isOk(dmplResultDifference),detail:'Resultado da ponte DMPL × Financial Core'})
   checks.push({id:'dmpl-status',month:String(financialCore.at(-1)?.year ?? 2026),metric:'Status da reconciliação DMPL',sourceValue:0,viewValue:dmpl.diferenca,difference:dmpl.diferenca,ok:isOk(dmpl.diferenca),detail:'Ponte DMPL: PL inicial + resultado + movimentos = PL contábil'})
 
   const trial=buildTrialBalance(integratedJournal,chartOfAccounts)
