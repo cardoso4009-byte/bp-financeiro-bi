@@ -66,8 +66,10 @@ export function financialReconciliation(){
     compare('bp-equation','Equação patrimonial',balance.ativoTotal,balance.passivoTotal+balance.pl,'Ativo = Passivo + Patrimônio Líquido')
   })
 
-  // O Diário integrado já contém o saldo de abertura do PL; não duplicar a abertura externa.
-  const dmpl=buildDmpl(integratedJournal,0,0,0)
+  // A DMPL integrada deve partir do PL de abertura, não de zero.
+  // Isso evita comparar um PL contábil absoluto com uma ponte que só contém o resultado.
+  const dmplOpening=openingBalance.equity
+  const dmpl=buildDmpl(integratedJournal,dmplOpening,0,0)
   const finalBalance=monthlyBalance[monthlyBalance.length-1]
   const dmplDifference=dmpl.plContabil-finalBalance.pl
   checks.push({id:'dmpl-bp-final-pl',month:'Dez',metric:'PL final da DMPL',sourceValue:finalBalance.pl,viewValue:dmpl.plContabil,difference:dmplDifference,ok:isOk(dmplDifference),detail:'DMPL integrada × PL final do Balanço'})
