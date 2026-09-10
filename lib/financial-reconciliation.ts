@@ -66,10 +66,13 @@ export function financialReconciliation(){
     compare('bp-equation','Equação patrimonial',balance.ativoTotal,balance.passivoTotal+balance.pl,'Ativo = Passivo + Patrimônio Líquido')
   })
 
-  // A DMPL integrada deve partir do PL de abertura, não de zero.
-  // Isso evita comparar um PL contábil absoluto com uma ponte que só contém o resultado.
+  // A DMPL de 2026 deve partir do PL de abertura de 31/12/2025.
+  // O lançamento OPENING-2025 já contém esse saldo; ele não representa
+  // movimentação de 2026 e, portanto, fica fora da ponte de resultados.
   const dmplOpening=openingBalance.equity
-  const dmpl=buildDmpl(integratedJournal,dmplOpening,0,0)
+  const firstYear=financialCore[0]?.year ?? 2026
+  const dmplEntries=integratedJournal.filter(entry => (entry.competence ?? entry.date.slice(0,7)) >= `${firstYear}-01`)
+  const dmpl=buildDmpl(dmplEntries,dmplOpening,0,0)
   const finalBalance=monthlyBalance[monthlyBalance.length-1]
   const dmplDifference=dmpl.plContabil-finalBalance.pl
   checks.push({id:'dmpl-bp-final-pl',month:'Dez',metric:'PL final da DMPL',sourceValue:finalBalance.pl,viewValue:dmpl.plContabil,difference:dmplDifference,ok:isOk(dmplDifference),detail:'DMPL integrada × PL final do Balanço'})
