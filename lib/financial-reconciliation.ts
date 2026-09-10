@@ -36,20 +36,18 @@ export function financialReconciliation(){
       const difference=viewValue-sourceValue
       checks.push({id,month:core.month,metric,sourceValue,viewValue,difference,ok:isOk(difference),detail})
     }
-
     compare('core-dre-revenue','Receita líquida',dre.receita,management.receitaLiquida,'Financial Core × DRE gerencial')
     compare('core-dre-cost','Custos',dre.custos,management.custos,'Financial Core × DRE gerencial')
     compare('core-dre-opex','OPEX',dre.opex,management.opex,'Financial Core × DRE gerencial')
     compare('core-dre-ebitda','EBITDA',dre.ebitda,management.ebitda,'Financial Core × DRE gerencial')
     compare('core-dre-net-income','Lucro líquido',dre.lucroLiquido,management.lucroLiquido,'Financial Core × DRE gerencial')
 
-    const monthKey=`2026-${String(i+1).padStart(2,'0')}`
+    const monthKey=`${core.year}-${String(i+1).padStart(2,'0')}`
     const dfc=cashFlowEngine(undefined,{start:monthKey,end:monthKey})
     compare('core-dfc-operating','Caixa operacional',dfc.operational,management.caixaOperacional,'Motor DFC indireto × DFC gerencial')
     compare('core-dfc-investment','Investimentos / CAPEX',dfc.investment,management.investimentos,'Motor DFC indireto × DFC gerencial')
     compare('core-dfc-financing','Financiamentos',dfc.financing,management.financiamentos,'Motor DFC indireto × DFC gerencial')
     compare('core-dfc-cash-final','Caixa final',dfc.finalCash,management.caixaFinal,'Motor DFC indireto × DFC gerencial')
-
     compare('core-bp-cash','Caixa',dfc.finalCash,balance.caixa,'Fonte de caixa × Balanço gerencial')
     compare('core-bp-receivables','Contas a receber',core.accountsReceivable,balance.contasReceber,'Financial Core × Balanço gerencial')
     compare('core-bp-inventory','Estoques',core.inventory,balance.estoques,'Financial Core × Balanço gerencial')
@@ -57,10 +55,8 @@ export function financialReconciliation(){
     compare('core-bp-suppliers','Fornecedores',core.suppliers,balance.fornecedores,'Financial Core × Balanço gerencial')
     compare('core-bp-obligations','Obrigações',core.obligations,balance.obrigacoes,'Financial Core × Balanço gerencial')
     compare('core-bp-debt','Dívida de longo prazo',core.debt,balance.dividasLongoPrazo,'Financial Core × Balanço gerencial')
-
     previousPl+=dre.lucroLiquido
     compare('dre-pl-movement','Movimentação do PL',previousPl,balance.pl,'PL de abertura + lucro líquido do Financial Core × BP')
-
     const acComposition=balance.caixa+balance.contasReceber+balance.estoques+balance.outrosAtivos
     const ancComposition=balance.imobilizado
     compare('bp-ac-composition','Ativo circulante',acComposition,balance.ativoCirculante,'Composição independente do Ativo Circulante')
@@ -70,15 +66,16 @@ export function financialReconciliation(){
     compare('bp-equation','Equação patrimonial',balance.ativoTotal,balance.passivoTotal+balance.pl,'Ativo = Passivo + Patrimônio Líquido')
   })
 
-  const dmpl=buildDmpl(integratedJournal,openingBalance.equity,0,0)
+  // O Diário integrado já contém o saldo de abertura do PL; não duplicar a abertura externa.
+  const dmpl=buildDmpl(integratedJournal,0,0,0)
   const finalBalance=monthlyBalance[monthlyBalance.length-1]
   const dmplDifference=dmpl.plContabil-finalBalance.pl
   checks.push({id:'dmpl-bp-final-pl',month:'Dez',metric:'PL final da DMPL',sourceValue:finalBalance.pl,viewValue:dmpl.plContabil,difference:dmplDifference,ok:isOk(dmplDifference),detail:'DMPL integrada × PL final do Balanço'})
-  checks.push({id:'dmpl-status',month:'2026',metric:'Status da reconciliação DMPL',sourceValue:0,viewValue:dmpl.diferenca,difference:dmpl.diferenca,ok:isOk(dmpl.diferenca),detail:'Ponte DMPL: PL inicial + resultado + movimentos = PL contábil'})
+  checks.push({id:'dmpl-status',month:String(financialCore.at(-1)?.year ?? 2026),metric:'Status da reconciliação DMPL',sourceValue:0,viewValue:dmpl.diferenca,difference:dmpl.diferenca,ok:isOk(dmpl.diferenca),detail:'Ponte DMPL: PL inicial + resultado + movimentos = PL contábil'})
 
   const trial=buildTrialBalance(integratedJournal,chartOfAccounts)
   const trialDifference=trial.totalDebit-trial.totalCredit
-  checks.push({id:'accounting-trial-balance',month:'2026',metric:'Balancete contábil',sourceValue:0,viewValue:trialDifference,difference:trialDifference,ok:isOk(trialDifference)&&trial.errors.length===0,detail:trial.errors.length?`Balancete com ${trial.errors.length} erro(s).`:'Débitos = créditos e lançamentos válidos.'})
+  checks.push({id:'accounting-trial-balance',month:String(financialCore.at(-1)?.year ?? 2026),metric:'Balancete contábil',sourceValue:0,viewValue:trialDifference,difference:trialDifference,ok:isOk(trialDifference)&&trial.errors.length===0,detail:trial.errors.length?`Balancete com ${trial.errors.length} erro(s).`:'Débitos = créditos e lançamentos válidos.'})
 
   const finalLedgerAccounts=new Map(trial.rows.map(row=>[row.code,row.balance]))
   const accountingBpChecks:[string,string,string,number,number][]=[
