@@ -20,5 +20,9 @@ jobs:
         run: npm install
       - name: Zero Difference Gate
         run: npm run financial:gate
+      - name: Period Gate
+        run: npm run period:gate
+      - name: Integrated Financial Gate
+        run: npm run integrated:gate
       - name: Build application
         run: npm run build
