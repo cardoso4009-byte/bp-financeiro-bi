@@ -87,7 +87,7 @@ function buildForPeriod(period: ReportPeriod) {
 function buildNetIncomeUntil(year: number, month: number) {
   if (month <= 0) return buildNetIncomeForEntries(integratedJournal.filter(entry => entryCompetence(entry).slice(0, 4) < String(year)))
   const end = competence(year, month)
-  return buildNetIncomeForEntries(integratedJournal.filter(entry => entryCompetence(entry) < end))
+  return buildNetIncomeForEntries(integratedJournal.filter(entry => entryCompetence(entry) <= end))
 }
 
 function buildNetIncomeForEntries(entries: typeof integratedJournal) {
