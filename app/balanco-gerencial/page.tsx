@@ -1,16 +1,16 @@
 'use client'
 import {useMemo, useState} from 'react'
+import {financialCore} from '@/lib/financial-core'
 import {monthlyBalance} from '@/lib/monthly-data'
 import ReportPeriodFilter from '@/components/report-period-filter'
-import {DEFAULT_REPORT_PERIOD, competence, monthLabel, type ReportPeriod} from '@/lib/report-period'
+import {DEFAULT_REPORT_PERIOD, monthLabel, type ReportPeriod} from '@/lib/report-period'
 
 const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0})
 const pct=(n:number)=>`${(n*100).toFixed(1).replace('.',',')}%`
 const months=monthlyBalance.map(m=>m.month)
-const availableYears=Array.from(new Set(months.map(x=>Number(x.slice(0,4))))).sort((a,b)=>a-b)
-const latestCompetence=months.at(-1)
-const defaultYear=latestCompetence?Number(latestCompetence.slice(0,4)):(availableYears.at(-1)??2026)
-const defaultMonth=latestCompetence?Number(latestCompetence.slice(5,7)):1
+const availableYears=Array.from(new Set(financialCore.map(x=>x.year))).sort((a,b)=>a-b)
+const defaultYear=availableYears.at(-1)??2026
+const defaultMonth=monthlyBalance.length||1
 
 type GroupProps={title:string;value:number;children:React.ReactNode;defaultOpen?:boolean}
 function Group({title,value,children,defaultOpen=true}:GroupProps){
@@ -26,10 +26,9 @@ function Check({ok,label,value}:{ok:boolean;label:string;value:string}){return <
 export default function BalancoGerencial(){
  const[period,setPeriod]=useState<ReportPeriod>({...DEFAULT_REPORT_PERIOD,year:defaultYear,month:defaultMonth})
  const[mode,setMode]=useState<'estrutura'|'indicadores'>('estrutura')
- const competenceKey=competence(period.year,period.month)
- const baseIndex=Math.max(0,months.findIndex(x=>x===competenceKey))
- const m=monthlyBalance.find(x=>x.month===competenceKey) ?? monthlyBalance[baseIndex]
- const prevIndex=period.month===1 ? months.findIndex(x=>x===`${period.year-1}-12`) : baseIndex-1
+ const baseIndex=Math.min(Math.max(period.month-1,0),Math.max(months.length-1,0))
+ const m=monthlyBalance[baseIndex] ?? monthlyBalance[0]
+ const prevIndex=period.month===1 ? -1 : baseIndex-1
  const prev=prevIndex>=0 ? monthlyBalance[prevIndex] : null
  const variance=(a:number,b:number)=>b!==0?(a-b)/Math.abs(b):0
  const patrimonioCheck=m.ativoTotal-(m.passivoTotal+m.pl)
