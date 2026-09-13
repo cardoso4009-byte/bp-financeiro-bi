@@ -12,8 +12,8 @@ const money=(n:number)=>Math.round(n*100)/100
 export function cashFlowEngine(_entries?:unknown,period?:AnalysisPeriod){
   const start=period?.start.slice(0,7)??'2026-01'
   const end=period?.end.slice(0,7)??'2026-12'
-  const indices=financialCore.map((core,i)=>({core,i})).filter(({i})=>{
-    const key=`2026-${String(i+1).padStart(2,'0')}`
+  const indices=financialCore.map((core,i)=>({core,i})).filter(({core,i})=>{
+    const key=`${core.year}-${String(i+1).padStart(2,'0')}`
     return key>=start&&key<=end
   })
 
@@ -56,9 +56,9 @@ export function cashFlowEngine(_entries?:unknown,period?:AnalysisPeriod){
     deltaSuppliers+=monthlyDeltaSuppliers
     deltaObligations+=monthlyDeltaObligations
 
-    evidence.push({entryId:`2026-${String(i+1).padStart(2,'0')}-IND`,date:`2026-${String(i+1).padStart(2,'0')}-28`,description:'Reconciliação da geração de caixa pelo método indireto',cashEffect:operating,counterpart:'DRE + Capital de Giro',category:'operational'})
-    evidence.push({entryId:`2026-${String(i+1).padStart(2,'0')}-CAPEX`,date:`2026-${String(i+1).padStart(2,'0')}-28`,description:'Investimentos em imobilizado',cashEffect:investmentFlow,counterpart:'1.2.01',category:'investment'})
-    if(financingChange!==0)evidence.push({entryId:`2026-${String(i+1).padStart(2,'0')}-FIN`,date:`2026-${String(i+1).padStart(2,'0')}-28`,description:'Variação de financiamentos',cashEffect:financingChange,counterpart:'2.2.01',category:'financing'})
+    evidence.push({entryId:`${core.year}-${String(i+1).padStart(2,'0')}-IND`,date:`${core.year}-${String(i+1).padStart(2,'0')}-28`,description:'Reconciliação da geração de caixa pelo método indireto',cashEffect:operating,counterpart:'DRE + Capital de Giro',category:'operational'})
+    evidence.push({entryId:`${core.year}-${String(i+1).padStart(2,'0')}-CAPEX`,date:`${core.year}-${String(i+1).padStart(2,'0')}-28`,description:'Investimentos em imobilizado',cashEffect:investmentFlow,counterpart:'1.2.01',category:'investment'})
+    if(financingChange!==0)evidence.push({entryId:`${core.year}-${String(i+1).padStart(2,'0')}-FIN`,date:`${core.year}-${String(i+1).padStart(2,'0')}-28`,description:'Variação de financiamentos',cashEffect:financingChange,counterpart:'2.2.01',category:'financing'})
   }
 
   const firstIndex=indices[0]?.i??0
