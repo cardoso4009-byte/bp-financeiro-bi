@@ -75,8 +75,6 @@ function buildForPeriod(period: ReportPeriod) {
     ? integratedJournal.filter(entry => entryCompetence(entry) === selected)
     : integratedJournal.filter(entry => { const c = entryCompetence(entry); return c >= `${period.year}-01` && c <= selected })
 
-  // Em visão mensal/comparativa, a abertura é o PL de fechamento da
-  // competência anterior. Em acumulado, a abertura é o saldo de 31/12.
   const plInicial = period.view === 'acumulado'
     ? openingBalance.equity
     : openingBalance.equity + buildNetIncomeUntil(period.year, period.month - 1)
