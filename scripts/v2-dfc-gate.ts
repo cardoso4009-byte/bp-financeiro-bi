@@ -6,26 +6,27 @@ const entries: FinancialEntry[] = [
   {
     id: 'dfc-1', companyId: 'c1', accountId: 'a1', date: '2026-09-03', competence: '2026-09',
     amount: 1000, nature: 'credit', cashBasis: 'caixa', movementClass: 'receita', source: 'manual',
-    settlementDate: '2026-09-05',
+    settlementDate: '2026-09-05', description: 'Receita liquidada', reconciled: true,
   },
   {
     id: 'dfc-2', companyId: 'c1', accountId: 'a2', date: '2026-09-04', competence: '2026-09',
     amount: 300, nature: 'debit', cashBasis: 'competencia', movementClass: 'opex', source: 'manual',
-    settlementDate: '2026-09-10',
+    settlementDate: '2026-09-10', description: 'OPEX liquidado', reconciled: true,
   },
   {
     id: 'dfc-3', companyId: 'c1', accountId: 'a3', date: '2026-09-06', competence: '2026-09',
     amount: 200, nature: 'debit', cashBasis: 'caixa', movementClass: 'capex', source: 'manual',
-    settlementDate: '2026-09-12',
+    settlementDate: '2026-09-12', description: 'CAPEX liquidado', reconciled: true,
   },
   {
     id: 'dfc-4', companyId: 'c1', accountId: 'a4', date: '2026-09-07', competence: '2026-09',
     amount: 50, nature: 'debit', cashBasis: 'caixa', movementClass: 'financeiro', source: 'manual',
-    settlementDate: '2026-09-15',
+    settlementDate: '2026-09-15', description: 'Movimento financeiro liquidado', reconciled: true,
   },
   {
     id: 'dfc-5', companyId: 'c1', accountId: 'a5', date: '2026-09-08', competence: '2026-09',
     amount: 75, nature: 'debit', cashBasis: 'caixa', movementClass: 'transferencia', source: 'manual',
+    description: 'Transferência não liquidada', reconciled: false,
   },
 ]
 
