@@ -27,7 +27,9 @@ function normalizeHeader(header: string): string {
 
 function parseAmount(value: string | undefined): number | undefined {
   if (value === undefined || value.trim() === '') return undefined
-  const normalized = value.replace(/\s/g, '').replace(/\./g, '').replace(',', '.')
+  const compact = value.replace(/\s/g, '')
+  // CSV brasileiro: 1.234,56. Quando não há vírgula, preservamos o ponto decimal.
+  const normalized = compact.includes(',') ? compact.replace(/\./g, '').replace(',', '.') : compact
   const amount = Number(normalized)
   return Number.isFinite(amount) ? amount : Number.NaN
 }
