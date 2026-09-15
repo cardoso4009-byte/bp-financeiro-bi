@@ -32,14 +32,7 @@ export interface V2ValidationResult {
 const NATURES: AccountingNature[] = ['debit', 'credit']
 const CASH_BASES: CashBasis[] = ['caixa', 'competencia']
 const MOVEMENT_CLASSES: MovementClass[] = [
-  'receita',
-  'custo',
-  'opex',
-  'capex',
-  'financeiro',
-  'imposto',
-  'transferencia',
-  'outros',
+  'receita', 'custo', 'opex', 'capex', 'financeiro', 'imposto', 'transferencia', 'outros',
 ]
 const SOURCES: DataSource[] = ['manual', 'csv', 'excel', 'erp', 'api']
 
@@ -59,6 +52,12 @@ function validCompetence(value: string): boolean {
   return month >= 1 && month <= 12
 }
 
+function validateOptionalDate(value: string | undefined, field: 'dueDate' | 'settlementDate', label: string, issues: V2ValidationIssue[]): void {
+  if (value !== undefined && value !== '' && !validIsoDate(value)) {
+    issues.push({ code: 'invalid_date', field, message: `${label} deve estar no formato YYYY-MM-DD e ser válida.` })
+  }
+}
+
 export function validateFinancialEntry(
   entry: Partial<FinancialEntry>,
   existingExternalIds: ReadonlySet<string> = new Set(),
@@ -72,42 +71,39 @@ export function validateFinancialEntry(
     ['date', 'data'],
     ['competence', 'competência'],
     ['amount', 'valor'],
+    ['nature', 'natureza'],
+    ['cashBasis', 'base'],
+    ['movementClass', 'classe de movimento'],
   ]
 
   for (const [field, label] of requiredFields) {
-    if (!required(entry[field])) {
-      issues.push({ code: 'required', field, message: `Campo obrigatório: ${label}.` })
-    }
+    if (!required(entry[field])) issues.push({ code: 'required', field, message: `Campo obrigatório: ${label}.` })
   }
 
   if (typeof entry.date === 'string' && !validIsoDate(entry.date)) {
     issues.push({ code: 'invalid_date', field: 'date', message: 'Data deve estar no formato YYYY-MM-DD e ser válida.' })
   }
-
   if (typeof entry.competence === 'string' && !validCompetence(entry.competence)) {
     issues.push({ code: 'invalid_competence', field: 'competence', message: 'Competência deve estar no formato YYYY-MM e conter mês entre 01 e 12.' })
   }
+  validateOptionalDate(entry.dueDate, 'dueDate', 'Vencimento', issues)
+  validateOptionalDate(entry.settlementDate, 'settlementDate', 'Liquidação', issues)
 
   if (entry.amount !== undefined && (!Number.isFinite(entry.amount) || typeof entry.amount !== 'number')) {
     issues.push({ code: 'invalid_amount', field: 'amount', message: 'Valor deve ser numérico e finito.' })
   }
-
   if (entry.nature !== undefined && !NATURES.includes(entry.nature)) {
     issues.push({ code: 'invalid_nature', field: 'nature', message: 'Natureza deve ser debit ou credit.' })
   }
-
   if (entry.cashBasis !== undefined && !CASH_BASES.includes(entry.cashBasis)) {
     issues.push({ code: 'invalid_cash_basis', field: 'cashBasis', message: 'Base deve ser caixa ou competencia.' })
   }
-
   if (entry.movementClass !== undefined && !MOVEMENT_CLASSES.includes(entry.movementClass)) {
     issues.push({ code: 'invalid_movement_class', field: 'movementClass', message: 'Classe de movimento não reconhecida.' })
   }
-
   if (entry.source !== undefined && !SOURCES.includes(entry.source)) {
     issues.push({ code: 'invalid_source', field: 'source', message: 'Origem do dado não reconhecida.' })
   }
-
   if (entry.externalId && existingExternalIds.has(entry.externalId)) {
     issues.push({ code: 'duplicate_external_id', field: 'externalId', message: 'Identificador externo já foi importado para este contexto.' })
   }
