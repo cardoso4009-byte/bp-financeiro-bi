@@ -30,5 +30,7 @@ jobs:
         run: npm run v2:csv:gate
       - name: V2 Persistence Gate
         run: npm run v2:persistence:gate
+      - name: V2 Financial Base Gate
+        run: npm run v2:financial-base:gate
       - name: Build application
         run: npm run build
