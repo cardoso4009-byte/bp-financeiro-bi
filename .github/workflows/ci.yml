@@ -26,5 +26,7 @@ jobs:
         run: npm run integrated:gate
       - name: V2 Data Gate
         run: npm run v2:data:gate
+      - name: V2 CSV Gate
+        run: npm run v2:csv:gate
       - name: Build application
         run: npm run build
