@@ -32,5 +32,7 @@ jobs:
         run: npm run v2:persistence:gate
       - name: V2 Financial Base Gate
         run: npm run v2:financial-base:gate
+      - name: V2 DFC Gate
+        run: npm run v2:dfc:gate
       - name: Build application
         run: npm run build

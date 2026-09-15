@@ -1,0 +1,49 @@
+import { buildV2FinancialBase } from '../lib/v2-financial-base'
+import { buildV2Dfc, filterV2DfcByPeriod } from '../lib/v2-dfc'
+import type { FinancialEntry } from '../lib/v2-data-model'
+
+const entries: FinancialEntry[] = [
+  {
+    id: 'dfc-1', companyId: 'c1', accountId: 'a1', date: '2026-09-03', competence: '2026-09',
+    amount: 1000, nature: 'credit', cashBasis: 'caixa', movementClass: 'receita', source: 'manual',
+    settlementDate: '2026-09-05', description: 'Receita liquidada', reconciled: true,
+  },
+  {
+    id: 'dfc-2', companyId: 'c1', accountId: 'a2', date: '2026-09-04', competence: '2026-09',
+    amount: 300, nature: 'debit', cashBasis: 'competencia', movementClass: 'opex', source: 'manual',
+    settlementDate: '2026-09-10', description: 'OPEX liquidado', reconciled: true,
+  },
+  {
+    id: 'dfc-3', companyId: 'c1', accountId: 'a3', date: '2026-09-06', competence: '2026-09',
+    amount: 200, nature: 'debit', cashBasis: 'caixa', movementClass: 'capex', source: 'manual',
+    settlementDate: '2026-09-12', description: 'CAPEX liquidado', reconciled: true,
+  },
+  {
+    id: 'dfc-4', companyId: 'c1', accountId: 'a4', date: '2026-09-07', competence: '2026-09',
+    amount: 50, nature: 'debit', cashBasis: 'caixa', movementClass: 'financeiro', source: 'manual',
+    settlementDate: '2026-09-15', description: 'Movimento financeiro liquidado', reconciled: true,
+  },
+  {
+    id: 'dfc-5', companyId: 'c1', accountId: 'a5', date: '2026-09-08', competence: '2026-09',
+    amount: 75, nature: 'debit', cashBasis: 'caixa', movementClass: 'transferencia', source: 'manual',
+    description: 'Transferência não liquidada', reconciled: false,
+  },
+]
+
+const base = buildV2FinancialBase(entries)
+const report = buildV2Dfc(base, '2026-09')
+const selected = report.selectedPeriod
+
+if (!selected) throw new Error('DFC Gate: período selecionado não encontrado')
+if (selected.operacional !== 700) throw new Error(`DFC Gate: operacional esperado 700, recebido ${selected.operacional}`)
+if (selected.investimento !== -200) throw new Error(`DFC Gate: investimento esperado -200, recebido ${selected.investimento}`)
+if (selected.financeiro !== -50) throw new Error(`DFC Gate: financeiro esperado -50, recebido ${selected.financeiro}`)
+if (selected.transferencia !== 0) throw new Error(`DFC Gate: transferência esperada 0, recebido ${selected.transferencia}`)
+if (selected.variacaoCaixa !== 450) throw new Error(`DFC Gate: variação esperada 450, recebido ${selected.variacaoCaixa}`)
+if (selected.entries !== 4) throw new Error(`DFC Gate: entries esperado 4, recebido ${selected.entries}`)
+if (report.cashSettledEntries !== 4) throw new Error(`DFC Gate: liquidados esperado 4, recebido ${report.cashSettledEntries}`)
+if (report.unsettledEntries !== 1) throw new Error(`DFC Gate: não liquidados esperado 1, recebido ${report.unsettledEntries}`)
+if (report.cashBasisWithoutSettlement !== 1) throw new Error(`DFC Gate: caixa sem liquidação esperado 1, recebido ${report.cashBasisWithoutSettlement}`)
+if (filterV2DfcByPeriod(base, '2026-09').length !== 4) throw new Error('DFC Gate: filtro por período incorreto')
+
+console.log('V2 DFC Gate: OK')
