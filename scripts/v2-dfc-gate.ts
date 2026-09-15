@@ -21,6 +21,7 @@ const entries: FinancialEntry[] = [
   {
     id: 'dfc-4', companyId: 'c1', accountId: 'a4', date: '2026-09-07', competence: '2026-09',
     amount: 50, nature: 'debit', cashBasis: 'caixa', movementClass: 'financeiro', source: 'manual',
+    settlementDate: '2026-09-15',
   },
   {
     id: 'dfc-5', companyId: 'c1', accountId: 'a5', date: '2026-09-08', competence: '2026-09',
@@ -35,13 +36,13 @@ const selected = report.selectedPeriod
 if (!selected) throw new Error('DFC Gate: período selecionado não encontrado')
 if (selected.operacional !== 700) throw new Error(`DFC Gate: operacional esperado 700, recebido ${selected.operacional}`)
 if (selected.investimento !== -200) throw new Error(`DFC Gate: investimento esperado -200, recebido ${selected.investimento}`)
-if (selected.financeiro !== 0 - 50) throw new Error(`DFC Gate: financeiro esperado -50, recebido ${selected.financeiro}`)
-if (selected.transferencia !== -75) throw new Error(`DFC Gate: transferência esperada -75, recebido ${selected.transferencia}`)
-if (selected.variacaoCaixa !== 375) throw new Error(`DFC Gate: variação esperada 375, recebido ${selected.variacaoCaixa}`)
-if (selected.entries !== 3) throw new Error(`DFC Gate: entries esperado 3, recebido ${selected.entries}`)
-if (report.cashSettledEntries !== 3) throw new Error(`DFC Gate: liquidados esperado 3, recebido ${report.cashSettledEntries}`)
-if (report.unsettledEntries !== 2) throw new Error(`DFC Gate: não liquidados esperado 2, recebido ${report.unsettledEntries}`)
-if (report.cashBasisWithoutSettlement !== 2) throw new Error(`DFC Gate: caixa sem liquidação esperado 2, recebido ${report.cashBasisWithoutSettlement}`)
-if (filterV2DfcByPeriod(base, '2026-09').length !== 3) throw new Error('DFC Gate: filtro por período incorreto')
+if (selected.financeiro !== -50) throw new Error(`DFC Gate: financeiro esperado -50, recebido ${selected.financeiro}`)
+if (selected.transferencia !== 0) throw new Error(`DFC Gate: transferência esperada 0, recebido ${selected.transferencia}`)
+if (selected.variacaoCaixa !== 450) throw new Error(`DFC Gate: variação esperada 450, recebido ${selected.variacaoCaixa}`)
+if (selected.entries !== 4) throw new Error(`DFC Gate: entries esperado 4, recebido ${selected.entries}`)
+if (report.cashSettledEntries !== 4) throw new Error(`DFC Gate: liquidados esperado 4, recebido ${report.cashSettledEntries}`)
+if (report.unsettledEntries !== 1) throw new Error(`DFC Gate: não liquidados esperado 1, recebido ${report.unsettledEntries}`)
+if (report.cashBasisWithoutSettlement !== 1) throw new Error(`DFC Gate: caixa sem liquidação esperado 1, recebido ${report.cashBasisWithoutSettlement}`)
+if (filterV2DfcByPeriod(base, '2026-09').length !== 4) throw new Error('DFC Gate: filtro por período incorreto')
 
 console.log('V2 DFC Gate: OK')
