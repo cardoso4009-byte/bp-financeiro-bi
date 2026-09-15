@@ -7,17 +7,17 @@ const entry = (id: string, externalId: string): FinancialEntry => ({
   cashBasis: 'caixa', movementClass: 'receita', source: 'csv', externalId, reconciled: false,
 })
 
-const batch: ImportBatch = {
-  id: 'lote-1', companyId: 'empresa-1', source: 'csv', fileName: 'teste.csv', importedAt: '2026-09-15T12:00:00Z',
+const makeBatch = (id: string): ImportBatch => ({
+  id, companyId: 'empresa-1', source: 'csv', fileName: 'teste.csv', importedAt: '2026-09-15T12:00:00Z',
   rowsReceived: 1, rowsAccepted: 1, rowsRejected: 0, status: 'processing',
-}
+})
 
 let store = createV2PersistenceStore()
-let result = persistApprovedBatch(store, { batch, entries: [entry('1', 'nf-1')] })
-if (result.entries.length !== 1 || result.duplicateExternalIds.length !== 0 || result.batch.status !== 'completed') throw new Error('Falha ao persistir lote válido')
-store = commitV2Persistence(store, result)
+const first = persistApprovedBatch(store, { batch: makeBatch('lote-1'), entries: [entry('1', 'nf-1')] })
+if (first.entries.length !== 1 || first.duplicateExternalIds.length !== 0 || first.batch.status !== 'completed') throw new Error('Falha ao persistir lote válido')
+store = commitV2Persistence(store, first)
 
-const duplicate = persistApprovedBatch(store, { ...batch, id: 'lote-2', rowsReceived: 1 }, [entry('2', 'nf-1')].length ? { batch: { ...batch, id: 'lote-2', rowsReceived: 1 }, entries: [entry('2', 'nf-1')] } : { batch, entries: [] })
+const duplicate = persistApprovedBatch(store, { batch: makeBatch('lote-2'), entries: [entry('2', 'nf-1')] })
 if (duplicate.entries.length !== 0 || duplicate.duplicateExternalIds[0] !== 'nf-1' || duplicate.batch.status !== 'failed') throw new Error('Falha na prevenção de duplicidade')
 
 console.log('V2 Persistence Gate: OK')
