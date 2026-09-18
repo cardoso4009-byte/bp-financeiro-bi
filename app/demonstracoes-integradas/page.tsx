@@ -65,7 +65,7 @@ export default function DemonstracoesIntegradas(){
 
   <section className="panel" style={{marginBottom:24}}>
    <div className="panel-title"><div><h2>Cockpit Financeiro V2</h2><span>Período {selectedV2Period}</span></div><span>{v2Entries.length?'Dados reais persistidos':'Aguardando dados V2'}</span></div>
-   {v2Entries.length===0 ? <div className="note">Nenhum lançamento V2 persistido neste navegador. Acesse <strong>Importação</strong>, aprove um CSV e volte a esta visão. A V1 permanece disponível abaixo.</div> : <>
+   {v2Entries.length===0 ? <div className="note">Nenhum lançamento V2 persistido neste navegador. Acesse <strong>Importação</strong>, aprove um CSV e volte a esta visão. A V1 permanece disponível abaixo.</div> : <div>
     <section className="panel" style={{marginBottom:20}}>
      <div className="panel-title"><div><h2>Resumo Executivo</h2><span>{selectedV2Period} × {previous}</span></div><span>{v2Executive.qualityStatus==='ok'?'✓ Sem bloqueios estruturais':v2Executive.qualityStatus==='pending'?'! Classificação pendente':'! Atenção de governança'}</span></div>
      <div className="cards">
