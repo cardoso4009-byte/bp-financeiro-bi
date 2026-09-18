@@ -31,7 +31,8 @@ export default function DemonstracoesIntegradas(){
  const selectedV2Period=selected
  const v2Base=useMemo(()=>buildV2FinancialBase(v2Entries),[v2Entries])
  const v2Dre=useMemo(()=>buildV2Dre(v2Base,selectedV2Period).selectedPeriod,[v2Base,selectedV2Period])
- const v2Dfc=useMemo(()=>buildV2Dfc(v2Base,selectedV2Period).selectedPeriod,[v2Base,selectedV2Period])
+ const v2DfcReport=useMemo(()=>buildV2Dfc(v2Base,selectedV2Period),[v2Base,selectedV2Period])
+ const v2Dfc=v2DfcReport.selectedPeriod
  const classifiedAccountIds=new Set(v2Accounts.map(account=>account.id))
  const v2AccountIds=new Set(v2Entries.map(entry=>entry.accountId))
  const v2BpReady=v2Entries.length>0 && v2AccountIds.size>0 && [...v2AccountIds].every(id=>classifiedAccountIds.has(id)) && [...v2Accounts].filter(account=>v2AccountIds.has(account.id)).every(account=>Boolean(account.companyId&&account.nature&&account.statement))
@@ -100,7 +101,7 @@ export default function DemonstracoesIntegradas(){
     </section>
 
     <div className="note" style={{marginTop:20}}><strong>Governança de período:</strong> DRE usa competência; DFC usa liquidação efetiva; BP é uma fotografia acumulada até a competência selecionada. As três visões compartilham a mesma Base Financeira V2, mas não misturam critérios de reconhecimento.</div>
-    <div className="note" style={{marginTop:12}}><strong>Controle de caixa:</strong> {v2Dfc?.cashSettledEntries??0} lançamento(s) liquidado(s), {v2Dfc?.unsettledEntries??v2Entries.length} sem liquidação e {v2Dfc?.cashBasisWithoutSettlement??0} marcado(s) como caixa sem data de liquidação. Esses últimos não entram na variação de caixa até existir a data efetiva.</div>
+    <div className="note" style={{marginTop:12}}><strong>Controle de caixa:</strong> {v2DfcReport.cashSettledEntries} lançamento(s) liquidado(s), {v2DfcReport.unsettledEntries} sem liquidação e {v2DfcReport.cashBasisWithoutSettlement} marcado(s) como caixa sem data de liquidação. Esses últimos não entram na variação de caixa até existir a data efetiva.</div>
    </>}
   </section>
 
