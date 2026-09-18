@@ -1,5 +1,5 @@
 'use client'
-import {useMemo,useState} from 'react'
+import {useEffect,useMemo,useState} from 'react'
 import {dreCoreByMonth,dreCoreMonths,type DRECoreMonth} from '@/lib/dre-core'
 import ReportPeriodFilter,{type ReportPeriod} from '@/components/report-period-filter'
 import {REPORT_MONTHS,competence} from '@/lib/report-period'
@@ -24,7 +24,7 @@ export default function DREGerencial(){
  const [v2Entries,setV2Entries]=useState<ReturnType<typeof readV2BrowserStore>['entries']>([])
  const [v2Centers,setV2Centers]=useState<ReturnType<typeof readV2CostCenters>>([])
  const [v2Loaded,setV2Loaded]=useState(false)
- useState(() => { const store=readV2BrowserStore(); setV2Entries(store.entries); setV2Centers(readV2CostCenters()); setV2Loaded(true); return true })
+ useEffect(()=>{const store=readV2BrowserStore();setV2Entries(store.entries);setV2Centers(readV2CostCenters());setV2Loaded(true)},[])
  const data=useMemo(()=>new Map(Array.from({length:12},(_,i)=>{const key=competence(period.year,i+1);return [key,coreToM(dreCoreByMonth.get(key)||emptyCore(i,period.year))]})),[period.year])
  const months=periodMonths(period)
  const selected=useMemo(()=>months.reduce((a,m)=>sum(a,data.get(competence(period.year,m))||empty()),empty()),[months,data,period.year])
