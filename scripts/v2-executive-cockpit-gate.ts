@@ -19,8 +19,8 @@ const entries: FinancialEntry[] = [
   {id:'2',companyId:'c1',accountId:'capital',description:'Capital social',date:'2026-08-01',competence:'2026-08',amount:1000,nature:'credit',cashBasis:'caixa',movementClass:'transferencia',source:'csv',externalId:'A6',reconciled:true,settlementDate:'2026-08-01'},
   {id:'3',companyId:'c1',accountId:'revenue',description:'Receita',date:'2026-08-05',competence:'2026-08',amount:500,nature:'credit',cashBasis:'competencia',movementClass:'receita',source:'csv',externalId:'A2',reconciled:true,settlementDate:'2026-08-05'},
   {id:'4',companyId:'c1',accountId:'opex',description:'OPEX',date:'2026-08-10',competence:'2026-08',amount:200,nature:'debit',cashBasis:'competencia',movementClass:'opex',source:'csv',externalId:'A3',reconciled:true,settlementDate:'2026-08-10'},
-  {id:'5',companyId:'c1',accountId:'revenue',date:'2026-09-05',competence:'2026-09',amount:1000,nature:'credit',cashBasis:'competencia',movementClass:'receita',source:'csv',externalId:'A4',reconciled:true,settlementDate:'2026-09-05'},
-  {id:'6',companyId:'c1',accountId:'opex',date:'2026-09-10',competence:'2026-09',amount:300,nature:'debit',cashBasis:'competencia',movementClass:'opex',source:'csv',externalId:'A5',reconciled:true,settlementDate:'2026-09-10'},
+  {id:'5',companyId:'c1',accountId:'revenue',description:'Receita',date:'2026-09-05',competence:'2026-09',amount:1000,nature:'credit',cashBasis:'competencia',movementClass:'receita',source:'csv',externalId:'A4',reconciled:true,settlementDate:'2026-09-05'},
+  {id:'6',companyId:'c1',accountId:'opex',description:'OPEX',date:'2026-09-10',competence:'2026-09',amount:300,nature:'debit',cashBasis:'competencia',movementClass:'opex',source:'csv',externalId:'A5',reconciled:true,settlementDate:'2026-09-10'},
 ]
 
 const base=buildV2FinancialBase(entries)
