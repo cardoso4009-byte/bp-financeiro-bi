@@ -10,6 +10,7 @@ import { buildV2Dre } from '@/lib/v2-dre'
 import { buildV2Dfc } from '@/lib/v2-dfc'
 import { buildV2Bp } from '@/lib/v2-bp'
 import { buildV2ReconciliationAudit } from '@/lib/v2-reconciliation'
+import { buildV2ExecutiveCockpit } from '@/lib/v2-executive-cockpit'
 import { readV2BrowserStore } from '@/lib/v2-browser-storage'
 import { readV2Accounts } from '@/lib/v2-account-storage'
 import type { Account } from '@/lib/v2-data-model'
@@ -40,6 +41,7 @@ export default function DemonstracoesIntegradas(){
  const v2Bp=useMemo(()=>v2BpReady?buildV2Bp(v2Base,v2Accounts,selectedV2Period):null,[v2Base,v2Accounts,v2BpReady,selectedV2Period])
  const previousV2Bp=useMemo(()=>v2BpReady?buildV2Bp(v2Base,v2Accounts,previous):null,[v2Base,v2Accounts,v2BpReady,previous])
  const v2Audit=useMemo(()=>buildV2ReconciliationAudit(v2Base,v2Accounts,buildV2Dre(v2Base,selectedV2Period),v2DfcReport,v2Bp,selectedV2Period,previous,previousV2Bp),[v2Base,v2Accounts,v2DfcReport,v2Bp,previousV2Bp,selectedV2Period,previous])
+ const v2Executive=useMemo(()=>buildV2ExecutiveCockpit(v2Base,buildV2Dre(v2Base),v2DfcReport,v2Bp,v2Audit,selectedV2Period,previous),[v2Base,v2DfcReport,v2Bp,v2Audit,selectedV2Period,previous])
 
  const periodEntries=useMemo(()=>sampleJournal.filter(e=>{const c=e.competence??e.date.slice(0,7);if(period.view==='mensal'||period.view==='comparativo') return c===selected;return c>=competence(period.year,1)&&c<=selected}),[period.view,period.year,selected])
  const opening=useMemo(()=>sampleJournal.filter(e=>(e.competence??e.date.slice(0,7))<competence(period.year,1)),[period.year])
@@ -59,6 +61,51 @@ export default function DemonstracoesIntegradas(){
   <section className="panel" style={{marginBottom:24}}>
    <div className="panel-title"><div><h2>Cockpit Financeiro V2</h2><span>Período {selectedV2Period}</span></div><span>{v2Entries.length?'Dados reais persistidos':'Aguardando dados V2'}</span></div>
    {v2Entries.length===0 ? <div className="note">Nenhum lançamento V2 persistido neste navegador. Acesse <strong>Importação</strong>, aprove um CSV e volte a esta visão. A V1 permanece disponível abaixo.</div> : <>
+    <section className="panel" style={{marginBottom:20}}>
+     <div className="panel-title"><div><h2>Resumo Executivo</h2><span>{selectedV2Period} × {previous}</span></div><span>{v2Executive.qualityStatus==='ok'?'✓ Sem bloqueios estruturais':v2Executive.qualityStatus==='pending'?'! Classificação pendente':'! Atenção de governança'}</span></div>
+     <div className="cards">
+      <div className="card"><span>Receita</span><strong>{brl(v2Executive.receita)}</strong><small>Competência {selectedV2Period}</small></div>
+      <div className="card"><span>Margem EBITDA</span><strong>{v2Executive.margemEbitda===undefined?'—':(v2Executive.margemEbitda*100).toFixed(1).replace('.',',')+'%'}</strong><small>EBITDA {brl(v2Executive.ebitda)}</small></div>
+      <div className="card"><span>Resultado líquido</span><strong>{brl(v2Executive.resultadoLiquido)}</strong><small>Margem {v2Executive.margemLiquida===undefined?'—':(v2Executive.margemLiquida*100).toFixed(1).replace('.',',')+'%'}</small></div>
+      <div className="card"><span>Caixa operacional</span><strong>{brl(v2Executive.caixaOperacional)}</strong><small>Variação total {brl(v2Executive.variacaoCaixa)}</small></div>
+     </div>
+     <div className="grid" style={{marginTop:20}}>
+      <section className="panel">
+       <div className="panel-title"><h2>Movimento do período</h2><span>vs. {previous}</span></div>
+       <div className="rows">
+        <div className="row"><span>Resultado líquido</span><b>{brl(v2Executive.resultadoVariacao)}</b></div>
+        <div className="row"><span>Variação de caixa</span><b>{brl(v2Executive.caixaVariacao)}</b></div>
+        <div className="row"><span>Caixa operacional</span><b>{brl(v2Executive.caixaOperacional)}</b></div>
+        <div className="row"><span>Diferença patrimonial</span><b>{brl(v2Executive.diferencaPatrimonial??0)}</b></div>
+       </div>
+      </section>
+      <section className="panel">
+       <div className="panel-title"><h2>Qualidade & fechamento</h2><span>{v2Executive.pendingIssues} item(ns)</span></div>
+       <div className="rows">
+        <div className="row"><span>Lançamentos sem classificação</span><b>{v2Executive.unclassifiedEntries}</b></div>
+        <div className="row"><span>Lançamentos sem liquidação</span><b>{v2Executive.unsettledEntries}</b></div>
+        <div className="row"><span>IDs externos duplicados</span><b>{v2Executive.duplicateExternalIds}</b></div>
+        <div className="row"><span>Status da auditoria</span><b>{v2Executive.qualityStatus==='ok'?'OK':v2Executive.qualityStatus==='pending'?'Pendente':'Atenção'}</b></div>
+       </div>
+      </section>
+     </div>
+     <section className="panel" style={{marginTop:20}}>
+      <div className="panel-title"><h2>Principais movimentos da DRE</h2><span>por impacto no resultado</span></div>
+      <div className="rows">
+       {v2Executive.drivers.map(driver=><div className="row" key={driver.label}><span>{driver.label}</span><b>{brl(driver.value)}</b></div>)}
+      </div>
+     </section>
+     <section className="panel" style={{marginTop:20}}>
+      <div className="panel-title"><h2>Evolução recente</h2><span>últimas {v2Executive.trend.length} competências</span></div>
+      <div style={{display:'grid',gridTemplateColumns:'0.9fr repeat(4,1fr)',gap:12,padding:'10px 0',fontSize:12,fontWeight:600,borderBottom:'1px solid rgba(127,127,127,.25)'}}>
+       <span>Período</span><span>Receita</span><span>EBITDA</span><span>Resultado</span><span>Caixa</span>
+      </div>
+      {v2Executive.trend.map(item=><div key={item.period} style={{display:'grid',gridTemplateColumns:'0.9fr repeat(4,1fr)',gap:12,padding:'10px 0',fontSize:13,borderBottom:'1px solid rgba(127,127,127,.15)'}}>
+       <span>{item.period}</span><span>{brl(item.receita)}</span><span>{brl(item.ebitda)}</span><span>{brl(item.resultadoLiquido)}</span><span>{brl(item.variacaoCaixa)}</span>
+      </div>)}
+     </section>
+    </section>
+
     <div className="cards">
      <div className="card"><span>Receita V2</span><strong>{brl(v2Dre?.receita??0)}</strong><small>Competência {selectedV2Period}</small></div>
      <div className="card"><span>EBITDA V2</span><strong>{brl(v2Dre?.ebitda??0)}</strong><small>Receita + custos + OPEX</small></div>
