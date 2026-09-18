@@ -17,6 +17,7 @@
     "v2:dre:gate": "tsx scripts/v2-dre-gate.ts",
     "v2:reconciliation:gate": "tsx scripts/v2-reconciliation-gate.ts",
     "v2:executive:gate": "tsx scripts/v2-executive-cockpit-gate.ts",
+    "v2:cost-center:gate": "tsx scripts/v2-cost-center-gate.ts",
     "security:next:gate": "tsx scripts/next-security-gate.ts"
   },
   "dependencies": {
