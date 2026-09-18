@@ -9,6 +9,7 @@ import { buildV2FinancialBase } from '@/lib/v2-financial-base'
 import { buildV2Dre } from '@/lib/v2-dre'
 import { buildV2Dfc } from '@/lib/v2-dfc'
 import { buildV2Bp } from '@/lib/v2-bp'
+import { buildV2ReconciliationAudit } from '@/lib/v2-reconciliation'
 import { readV2BrowserStore } from '@/lib/v2-browser-storage'
 import { readV2Accounts } from '@/lib/v2-account-storage'
 import type { Account } from '@/lib/v2-data-model'
@@ -37,6 +38,8 @@ export default function DemonstracoesIntegradas(){
  const v2AccountIds=new Set(v2Entries.map(entry=>entry.accountId))
  const v2BpReady=v2Entries.length>0 && v2AccountIds.size>0 && [...v2AccountIds].every(id=>classifiedAccountIds.has(id)) && [...v2Accounts].filter(account=>v2AccountIds.has(account.id)).every(account=>Boolean(account.companyId&&account.nature&&account.statement))
  const v2Bp=useMemo(()=>v2BpReady?buildV2Bp(v2Base,v2Accounts,selectedV2Period):null,[v2Base,v2Accounts,v2BpReady,selectedV2Period])
+ const previousV2Bp=useMemo(()=>v2BpReady?buildV2Bp(v2Base,v2Accounts,previous):null,[v2Base,v2Accounts,v2BpReady,previous])
+ const v2Audit=useMemo(()=>buildV2ReconciliationAudit(v2Base,v2Accounts,buildV2Dre(v2Base,selectedV2Period),v2DfcReport,v2Bp,selectedV2Period,previous,previousV2Bp),[v2Base,v2Accounts,v2DfcReport,v2Bp,previousV2Bp,selectedV2Period,previous])
 
  const periodEntries=useMemo(()=>sampleJournal.filter(e=>{const c=e.competence??e.date.slice(0,7);if(period.view==='mensal'||period.view==='comparativo') return c===selected;return c>=competence(period.year,1)&&c<=selected}),[period.view,period.year,selected])
  const opening=useMemo(()=>sampleJournal.filter(e=>(e.competence??e.date.slice(0,7))<competence(period.year,1)),[period.year])
@@ -102,6 +105,48 @@ export default function DemonstracoesIntegradas(){
 
     <div className="note" style={{marginTop:20}}><strong>Governança de período:</strong> DRE usa competência; DFC usa liquidação efetiva; BP é uma fotografia acumulada até a competência selecionada. As três visões compartilham a mesma Base Financeira V2, mas não misturam critérios de reconhecimento.</div>
     <div className="note" style={{marginTop:12}}><strong>Controle de caixa:</strong> {v2DfcReport.cashSettledEntries} lançamento(s) liquidado(s), {v2DfcReport.unsettledEntries} sem liquidação e {v2DfcReport.cashBasisWithoutSettlement} marcado(s) como caixa sem data de liquidação. Esses últimos não entram na variação de caixa até existir a data efetiva.</div>
+    <section className="panel" style={{marginTop:20}}>
+     <div className="panel-title"><div><h2>Reconciliação e Auditoria V2</h2><span>{selectedV2Period} × {previous}</span></div><span>{v2Audit.status==='ok'?'✓ Estruturalmente OK':v2Audit.status==='pending'?'! Classificação pendente':'! Atenção'}</span></div>
+     <div className="cards">
+      <div className="card"><span>Classificação</span><strong>{v2Audit.classification.classifiedEntries}/{v2Audit.classification.totalEntries}</strong><small>{v2Audit.classification.unclassifiedEntries} sem classificação completa</small></div>
+      <div className="card"><span>Liquidação</span><strong>{v2Audit.settlement.settledEntries}</strong><small>{v2Audit.settlement.unsettledEntries} sem liquidação</small></div>
+      <div className="card"><span>Diferença BP</span><strong>{brl(v2Audit.bpVsResult.bpDifference)}</strong><small>{v2Audit.bpVsResult.balanced?'Equação conciliada':'Revisão necessária'}</small></div>
+      <div className="card"><span>IDs externos duplicados</span><strong>{v2Audit.duplicateExternalIds}</strong><small>Na base persistida</small></div>
+     </div>
+     <div className="grid" style={{marginTop:20}}>
+      <section className="panel">
+       <div className="panel-title"><h2>DRE × DFC</h2><span>{v2Audit.dreVsDfc.interpretation==='aligned'?'Valores alinhados':'Ponte de timing'}</span></div>
+       <div className="rows">
+        <div className="row"><span>Resultado líquido DRE</span><b>{brl(v2Audit.dreVsDfc.dreResult)}</b></div>
+        <div className="row"><span>Variação de caixa DFC</span><b>{brl(v2Audit.dreVsDfc.cashVariation)}</b></div>
+        <div className="row"><span>Diferença da ponte</span><b>{brl(v2Audit.dreVsDfc.bridgeDifference)}</b></div>
+       </div>
+       <div className="note" style={{marginTop:12}}>A diferença não é tratada como erro automático: DRE usa competência e DFC usa liquidação. Capital, capex, transferências e capital de giro também podem explicar a ponte.</div>
+      </section>
+      <section className="panel">
+       <div className="panel-title"><h2>BP × Resultado</h2><span>{v2Audit.bpVsResult.interpretation==='balanced'?'Conciliado':'Requer análise'}</span></div>
+       <div className="rows">
+        <div className="row"><span>Diferença patrimonial</span><b>{brl(v2Audit.bpVsResult.bpDifference)}</b></div>
+        <div className="row"><span>Resultado do período</span><b>{brl(v2Audit.bpVsResult.currentResult??0)}</b></div>
+        <div className="row"><span>Movimento do PL</span><b>{brl(v2Audit.bpVsResult.plMovement??0)}</b></div>
+        <div className="row"><span>Movimento de PL não explicado pelo resultado</span><b>{brl(v2Audit.bpVsResult.unexplainedPlMovement??0)}</b></div>
+       </div>
+       <div className="note" style={{marginTop:12}}>O resultado não é encerrado automaticamente no PL. Diferenças podem decorrer de capital, distribuições, ajustes ou ausência de lançamento de encerramento.</div>
+      </section>
+     </div>
+     <section className="panel" style={{marginTop:20}}>
+      <div className="panel-title"><h2>Variação período a período</h2><span>{selectedV2Period} × {previous}</span></div>
+      <div className="grid">
+       <div className="note"><small>Resultado líquido</small><p><strong>{brl(v2Audit.periodVariation.dreResultVariation)}</strong> de variação</p></div>
+       <div className="note"><small>Caixa</small><p><strong>{brl(v2Audit.periodVariation.cashVariation)}</strong> de variação</p></div>
+       <div className="note"><small>Diferença patrimonial</small><p><strong>{brl(v2Audit.periodVariation.bpDifferenceVariation??0)}</strong> de variação</p></div>
+      </div>
+     </section>
+     <section className="panel" style={{marginTop:20}}>
+      <div className="panel-title"><h2>Pendências e trilha de qualidade</h2><span>{v2Audit.issues.length} item(ns)</span></div>
+      {v2Audit.issues.length===0 ? <div className="note">Nenhuma pendência estrutural detectada no período.</div> : <div className="rows">{v2Audit.issues.map(issue=><div className="row" key={issue.code}><span>{issue.title}<small style={{display:'block'}}>{issue.detail}</small></span><b>{issue.count}</b></div>)}</div>}
+     </section>
+    </section>
    </>}
   </section>
 
