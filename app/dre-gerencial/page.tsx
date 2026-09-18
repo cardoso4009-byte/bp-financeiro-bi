@@ -3,6 +3,10 @@ import {useMemo,useState} from 'react'
 import {dreCoreByMonth,dreCoreMonths,type DRECoreMonth} from '@/lib/dre-core'
 import ReportPeriodFilter,{type ReportPeriod} from '@/components/report-period-filter'
 import {REPORT_MONTHS,competence} from '@/lib/report-period'
+import { buildV2FinancialBase } from '@/lib/v2-financial-base'
+import { buildV2CostCenterReport } from '@/lib/v2-cost-center'
+import { readV2BrowserStore } from '@/lib/v2-browser-storage'
+import { readV2CostCenters } from '@/lib/v2-cost-center-storage'
 
 const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0})
 const pct=(n:number)=>`${n.toFixed(1).replace('.',',')}%`
@@ -17,6 +21,10 @@ function periodMonths(p:ReportPeriod){const end=Math.max(1,Math.min(12,p.month))
 export default function DREGerencial(){
  const [period,setPeriod]=useState<ReportPeriod>({year:availableYears[0]??2026,month:2,view:'mensal'})
  const [view,setView]=useState<'dre'|'orcado'|'comparativo'>('dre')
+ const [v2Entries,setV2Entries]=useState<ReturnType<typeof readV2BrowserStore>['entries']>([])
+ const [v2Centers,setV2Centers]=useState<ReturnType<typeof readV2CostCenters>>([])
+ const [v2Loaded,setV2Loaded]=useState(false)
+ useState(() => { const store=readV2BrowserStore(); setV2Entries(store.entries); setV2Centers(readV2CostCenters()); setV2Loaded(true); return true })
  const data=useMemo(()=>new Map(Array.from({length:12},(_,i)=>{const key=competence(period.year,i+1);return [key,coreToM(dreCoreByMonth.get(key)||emptyCore(i,period.year))]})),[period.year])
  const months=periodMonths(period)
  const selected=useMemo(()=>months.reduce((a,m)=>sum(a,data.get(competence(period.year,m))||empty()),empty()),[months,data,period.year])
@@ -24,10 +32,14 @@ export default function DREGerencial(){
  const label=period.view==='mensal'?REPORT_MONTHS[period.month-1]:`Jan–${REPORT_MONTHS[period.month-1]}`
  const change=(a:number,b:number)=>b===0?0:(a-b)/Math.abs(b)*100
  const handlePeriodChange=(next:ReportPeriod)=>{setPeriod(next);if(next.view==='comparativo')setView('comparativo');else if(view==='comparativo')setView('dre')}
+ const selectedV2Period=competence(period.year,period.month)
+ const v2Report=useMemo(()=>v2Loaded&&v2Entries.length?buildV2CostCenterReport(buildV2FinancialBase(v2Entries),v2Centers,selectedV2Period):null,[v2Loaded,v2Entries,v2Centers,selectedV2Period])
+ const v2Revenue=v2Report?.rows.reduce((s,row)=>s+row.receita,0)??0
  return <main className="content" style={{marginLeft:0,width:'100%',maxWidth:1450,margin:'0 auto'}}>
   <header><div><small>CONTROLADORIA FINANCEIRA</small><h1>DRE Gerencial</h1><p>Demonstração de resultados • Regime de competência</p></div><ReportPeriodFilter value={period} onChange={handlePeriodChange} years={availableYears}/></header>
   <div className="bp-tabs" style={{marginBottom:18}}><button className={view==='dre'?'active':''} onClick={()=>setView('dre')}>DRE</button><button className={view==='orcado'?'active':''} onClick={()=>setView('orcado')}>Orçado × Realizado</button><button className={view==='comparativo'?'active':''} onClick={()=>setView('comparativo')}>Análise Comparativa</button></div>
   <div className="cards"><Card title="Receita Líquida" value={selected.revenue} sub={label}/><Card title="Lucro Bruto" value={selected.gross} sub={`Margem ${pct(selected.revenue?selected.gross/selected.revenue*100:0)}`}/><Card title="EBITDA" value={selected.ebitda} sub={`Margem ${pct(selected.revenue?selected.ebitda/selected.revenue*100:0)}`}/><Card title="Lucro Líquido" value={selected.net} sub={`Margem ${pct(selected.revenue?selected.net/selected.revenue*100:0)}`}/></div>
+  <section className="panel wide"><div className="panel-title"><div><h2>DRE V2 por centro de resultado</h2><span>Competência {selectedV2Period} • Base Financeira V2</span></div><span>{v2Report ? `${v2Report.rows.length} agrupamento(s)` : 'Sem dados V2'}</span></div>{!v2Report?<div className="note">Nenhum lançamento V2 persistido para a competência selecionada. A visão legada permanece disponível.</div>:<><div className="cards"><div className="card"><span>Receita V2</span><strong>{brl(v2Revenue)}</strong><small>Conferência da base por centro</small></div><div className="card"><span>Sem centro</span><strong>{v2Report.unassignedEntries}</strong><small>Requer classificação</small></div><div className="card"><span>Centros com dados</span><strong>{v2Report.rows.filter(row=>row.costCenterId).length}</strong><small>Dimensão gerencial</small></div></div><div className="table-wrap" style={{marginTop:16}}><table><thead><tr><th>Centro</th><th>Receita</th><th>Custos</th><th>OPEX</th><th>EBITDA</th><th>Financeiro</th><th>Impostos</th><th>Resultado</th></tr></thead><tbody>{v2Report.rows.map(row=><tr key={row.costCenterId??'sem'}><td><strong>{row.code}</strong><small style={{display:'block'}}>{row.name}</small></td><td className="amount">{brl(row.receita)}</td><td className="amount">{brl(row.custos)}</td><td className="amount">{brl(row.opex)}</td><td className="amount"><strong>{brl(row.ebitdaImpact)}</strong></td><td className="amount">{brl(row.resultadoFinanceiro)}</td><td className="amount">{brl(row.impostos)}</td><td className="amount"><strong>{brl(row.resultadoLiquido)}</strong></td></tr>)}</tbody></table></div><div className="note" style={{marginTop:12}}>Nesta camada, o centro é uma dimensão gerencial explícita. Nenhum rateio ou redistribuição automática é aplicado aos lançamentos sem centro.</div></>}</section>
   {view==='dre'&&<DreTable selected={selected} label={label} months={months} data={data} period={period}/>} 
   {view==='orcado'&&<BudgetView selected={selected} label={label}/>} 
   {view==='comparativo'&&<CompareView selected={selected} prior={prior} label={label} period={period} change={change}/>} 
