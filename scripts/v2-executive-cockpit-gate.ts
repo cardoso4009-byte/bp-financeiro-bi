@@ -15,7 +15,8 @@ const accounts: Account[] = [
 ]
 
 const entries: FinancialEntry[] = [
-  {id:'1',companyId:'c1',accountId:'capital',date:'2026-08-01',competence:'2026-08',amount:1000,nature:'credit',cashBasis:'caixa',movementClass:'financeiro',source:'csv',externalId:'A1',reconciled:true,settlementDate:'2026-08-01'},
+  {id:'1',companyId:'c1',accountId:'cash',date:'2026-08-01',competence:'2026-08',amount:1000,nature:'debit',cashBasis:'caixa',movementClass:'transferencia',source:'csv',externalId:'A1',reconciled:true,settlementDate:'2026-08-01'},
+  {id:'2',companyId:'c1',accountId:'capital',date:'2026-08-01',competence:'2026-08',amount:1000,nature:'credit',cashBasis:'caixa',movementClass:'transferencia',source:'csv',externalId:'A6',reconciled:true,settlementDate:'2026-08-01'},
   {id:'2',companyId:'c1',accountId:'revenue',date:'2026-08-05',competence:'2026-08',amount:500,nature:'credit',cashBasis:'competencia',movementClass:'receita',source:'csv',externalId:'A2',reconciled:true,settlementDate:'2026-08-05'},
   {id:'3',companyId:'c1',accountId:'opex',date:'2026-08-10',competence:'2026-08',amount:200,nature:'debit',cashBasis:'competencia',movementClass:'opex',source:'csv',externalId:'A3',reconciled:true,settlementDate:'2026-08-10'},
   {id:'4',companyId:'c1',accountId:'revenue',date:'2026-09-05',competence:'2026-09',amount:1000,nature:'credit',cashBasis:'competencia',movementClass:'receita',source:'csv',externalId:'A4',reconciled:true,settlementDate:'2026-09-05'},
@@ -37,10 +38,10 @@ assert.equal(cockpit.resultadoLiquido,700)
 assert.equal(cockpit.margemLiquida,0.7)
 assert.equal(cockpit.caixaOperacional,700)
 assert.equal(cockpit.variacaoCaixa,700)
-assert.equal(cockpit.resultadoAnterior,1300)
-assert.equal(cockpit.resultadoVariacao,-600)
-assert.equal(cockpit.caixaAnterior,1300)
-assert.equal(cockpit.caixaVariacao,-600)
+assert.equal(cockpit.resultadoAnterior,300)
+assert.equal(cockpit.resultadoVariacao,400)
+assert.equal(cockpit.caixaAnterior,300)
+assert.equal(cockpit.caixaVariacao,400)
 assert.equal(cockpit.qualityStatus,'ok')
 assert.equal(cockpit.pendingIssues,0)
 assert.equal(cockpit.trend.length,2)
