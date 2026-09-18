@@ -112,16 +112,40 @@ export default function DemonstracoesIntegradas(){
 
      <section className="panel" style={{marginTop:20}}>
       <div className="panel-title"><div><h2>Resultado por centro de resultado</h2><span>{selectedV2Period} • dimensão gerencial explícita</span></div><span>{v2Executive.costCenterCount} centro(s) com dados</span></div>
-      {v2Executive.costCenters.length===0 ? <div className="note">Nenhum lançamento com centro de resultado na competência selecionada. A ausência de classificação não é redistribuída automaticamente.</div> : <>
-       <div className="cards">
-        <div className="card"><span>Centros com dados</span><strong>{v2Executive.costCenterCount}</strong><small>Classificação explícita</small></div>
-        <div className="card"><span>Sem centro</span><strong>{v2Executive.unassignedCostCenterEntries}</strong><small>Lançamentos sem rateio</small></div>
-        <div className="card"><span>Receita por centros</span><strong>{brl(v2Executive.costCenters.filter(row=>row.costCenterId).reduce((sum,row)=>sum+row.receita,0))}</strong><small>Competência {selectedV2Period}</small></div>
-        <div className="card"><span>OPEX por centros</span><strong>{brl(v2Executive.costCenters.filter(row=>row.costCenterId).reduce((sum,row)=>sum+row.opex,0))}</strong><small>Sem redistribuição automática</small></div>
+      {v2Executive.costCenters.length===0 ? (
+       <div className="note">Nenhum lançamento com centro de resultado na competência selecionada. A ausência de classificação não é redistribuída automaticamente.</div>
+      ) : (
+       <div>
+        <div className="cards">
+         <div className="card"><span>Centros com dados</span><strong>{v2Executive.costCenterCount}</strong><small>Classificação explícita</small></div>
+         <div className="card"><span>Sem centro</span><strong>{v2Executive.unassignedCostCenterEntries}</strong><small>Lançamentos sem rateio</small></div>
+         <div className="card"><span>Receita por centros</span><strong>{brl(v2Executive.costCenters.filter(row=>row.costCenterId).reduce((sum,row)=>sum+row.receita,0))}</strong><small>Competência {selectedV2Period}</small></div>
+         <div className="card"><span>OPEX por centros</span><strong>{brl(v2Executive.costCenters.filter(row=>row.costCenterId).reduce((sum,row)=>sum+row.opex,0))}</strong><small>Sem redistribuição automática</small></div>
+        </div>
+        <div className="table-wrap" style={{marginTop:16,overflowX:'auto'}}>
+         <table>
+          <thead><tr><th>Centro</th><th>Receita</th><th>Custos</th><th>OPEX</th><th>EBITDA</th><th>Margem EBITDA</th><th>Resultado</th><th>Margem líquida</th></tr></thead>
+          <tbody>
+           {v2Executive.costCenters.map(row=>{
+            const margemEbitda=Math.abs(row.receita)>=0.005?row.ebitdaImpact/row.receita:undefined
+            const margemLiquida=Math.abs(row.receita)>=0.005?row.resultadoLiquido/row.receita:undefined
+            return <tr key={row.costCenterId??'sem'}>
+             <td><strong>{row.code}</strong><small style={{display:'block'}}>{row.name}</small></td>
+             <td className="amount">{brl(row.receita)}</td>
+             <td className="amount">{brl(row.custos)}</td>
+             <td className="amount">{brl(row.opex)}</td>
+             <td className="amount"><strong>{brl(row.ebitdaImpact)}</strong></td>
+             <td className="amount">{margemEbitda===undefined?'—':(margemEbitda*100).toFixed(1).replace('.',',')+'%'}</td>
+             <td className="amount"><strong>{brl(row.resultadoLiquido)}</strong></td>
+             <td className="amount">{margemLiquida===undefined?'—':(margemLiquida*100).toFixed(1).replace('.',',')+'%'}</td>
+            </tr>
+           })}
+          </tbody>
+         </table>
+        </div>
+        <div className="note" style={{marginTop:12}}><strong>Rastreabilidade:</strong> os valores acima vêm diretamente dos lançamentos V2 classificados no centro selecionado. Lançamentos sem centro permanecem separados e não são rateados, inferidos ou redistribuídos.</div>
        </div>
-       <div className="table-wrap" style={{marginTop:16,overflowX:'auto'}}><table><thead><tr><th>Centro</th><th>Receita</th><th>Custos</th><th>OPEX</th><th>EBITDA</th><th>Margem EBITDA</th><th>Resultado</th><th>Margem líquida</th></tr></thead><tbody>{v2Executive.costCenters.map(row=>{const margemEbitda=Math.abs(row.receita)>=0.005?row.ebitdaImpact/row.receita:undefined;const margemLiquida=Math.abs(row.receita)>=0.005?row.resultadoLiquido/row.receita:undefined;return <tr key={row.costCenterId??'sem'}><td><strong>{row.code}</strong><small style={{display:'block'}}>{row.name}</small></td><td className="amount">{brl(row.receita)}</td><td className="amount">{brl(row.custos)}</td><td className="amount">{brl(row.opex)}</td><td className="amount"><strong>{brl(row.ebitdaImpact)}</strong></td><td className="amount">{margemEbitda===undefined?'—':(margemEbitda*100).toFixed(1).replace('.',',')+'%'}</td><td className="amount"><strong>{brl(row.resultadoLiquido)}</strong></td><td className="amount">{margemLiquida===undefined?'—':(margemLiquida*100).toFixed(1).replace('.',',')+'%'}</td></tr>})}</tbody></table></div>
-       <div className="note" style={{marginTop:12}}><strong>Rastreabilidade:</strong> os valores acima vêm diretamente dos lançamentos V2 classificados no centro selecionado. Lançamentos sem centro permanecem separados e não são rateados, inferidos ou redistribuídos.</div>
-      </>}
+      )}
      </section>
 
     <div className="cards">
