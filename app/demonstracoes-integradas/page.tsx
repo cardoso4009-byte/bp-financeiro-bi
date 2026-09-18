@@ -19,6 +19,23 @@ import type { Account } from '@/lib/v2-data-model'
 
 const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0})
 
+
+function CostCenterCockpitPanel({report,period}:{report:ReturnType<typeof buildV2ExecutiveCockpit>;period:string}){
+ return <section className="panel" style={{marginTop:20}}>
+  <div className="panel-title"><div><h2>Resultado por centro de resultado</h2><span>{period} • dimensão gerencial explícita</span></div><span>{report.costCenterCount} centro(s) com dados</span></div>
+  {report.costCenters.length===0 ? <div className="note">Nenhum lançamento com centro de resultado na competência selecionada. A ausência de classificação não é redistribuída automaticamente.</div> : <>
+   <div className="cards">
+    <div className="card"><span>Centros com dados</span><strong>{report.costCenterCount}</strong><small>Classificação explícita</small></div>
+    <div className="card"><span>Sem centro</span><strong>{report.unassignedCostCenterEntries}</strong><small>Lançamentos sem rateio</small></div>
+    <div className="card"><span>Receita por centros</span><strong>{brl(report.costCenters.filter(row=>row.costCenterId).reduce((sum,row)=>sum+row.receita,0))}</strong><small>Competência {period}</small></div>
+    <div className="card"><span>OPEX por centros</span><strong>{brl(report.costCenters.filter(row=>row.costCenterId).reduce((sum,row)=>sum+row.opex,0))}</strong><small>Sem redistribuição automática</small></div>
+   </div>
+   <div className="table-wrap" style={{marginTop:16,overflowX:'auto'}}><table><thead><tr><th>Centro</th><th>Receita</th><th>Custos</th><th>OPEX</th><th>EBITDA</th><th>Margem EBITDA</th><th>Resultado</th><th>Margem líquida</th></tr></thead><tbody>{report.costCenters.map(row=>{const margemEbitda=Math.abs(row.receita)>=0.005?row.ebitdaImpact/row.receita:undefined;const margemLiquida=Math.abs(row.receita)>=0.005?row.resultadoLiquido/row.receita:undefined;return <tr key={row.costCenterId??'sem'}><td><strong>{row.code}</strong><small style={{display:'block'}}>{row.name}</small></td><td className="amount">{brl(row.receita)}</td><td className="amount">{brl(row.custos)}</td><td className="amount">{brl(row.opex)}</td><td className="amount"><strong>{brl(row.ebitdaImpact)}</strong></td><td className="amount">{margemEbitda===undefined?'—':(margemEbitda*100).toFixed(1).replace('.',',')+'%'}</td><td className="amount"><strong>{brl(row.resultadoLiquido)}</strong></td><td className="amount">{margemLiquida===undefined?'—':(margemLiquida*100).toFixed(1).replace('.',',')+'%'}</td></tr>})}</tbody></table></div>
+   <div className="note" style={{marginTop:12}}><strong>Rastreabilidade:</strong> os valores vêm diretamente dos lançamentos V2 classificados no centro. Lançamentos sem centro permanecem separados e não são rateados, inferidos ou redistribuídos.</div>
+  </>}
+ </section>
+}
+
 export default function DemonstracoesIntegradas(){
  const [period,setPeriod]=useState<ReportPeriod>(DEFAULT_REPORT_PERIOD)
  const [v2Entries,setV2Entries]=useState<ReturnType<typeof readV2BrowserStore>['entries']>([])
@@ -65,8 +82,7 @@ export default function DemonstracoesIntegradas(){
 
   <section className="panel" style={{marginBottom:24}}>
    <div className="panel-title"><div><h2>Cockpit Financeiro V2</h2><span>Período {selectedV2Period}</span></div><span>{v2Entries.length?'Dados reais persistidos':'Aguardando dados V2'}</span></div>
-   {v2Entries.length===0 && <div className="note">Nenhum lançamento V2 persistido neste navegador. Acesse <strong>Importação</strong>, aprove um CSV e volte a esta visão. A V1 permanece disponível abaixo.</div>}
-   {v2Entries.length>0 && <div>
+   {v2Entries.length===0 ? <div className="note">Nenhum lançamento V2 persistido neste navegador. Acesse <strong>Importação</strong>, aprove um CSV e volte a esta visão. A V1 permanece disponível abaixo.</div> : <>
     <section className="panel" style={{marginBottom:20}}>
      <div className="panel-title"><div><h2>Resumo Executivo</h2><span>{selectedV2Period} × {previous}</span></div><span>{v2Executive.qualityStatus==='ok'?'✓ Sem bloqueios estruturais':v2Executive.qualityStatus==='pending'?'! Classificação pendente':'! Atenção de governança'}</span></div>
      <div className="cards">
@@ -110,44 +126,9 @@ export default function DemonstracoesIntegradas(){
        <span>{item.period}</span><span>{brl(item.receita)}</span><span>{brl(item.ebitda)}</span><span>{brl(item.resultadoLiquido)}</span><span>{brl(item.variacaoCaixa)}</span>
       </div>)}
      </section>
+    </section>
 
-     <section className="panel" style={{marginTop:20}}>
-      <div className="panel-title"><div><h2>Resultado por centro de resultado</h2><span>{selectedV2Period} • dimensão gerencial explícita</span></div><span>{v2Executive.costCenterCount} centro(s) com dados</span></div>
-      {v2Executive.costCenters.length===0 ? (
-       <div className="note">Nenhum lançamento com centro de resultado na competência selecionada. A ausência de classificação não é redistribuída automaticamente.</div>
-      ) : (
-       <div>
-        <div className="cards">
-         <div className="card"><span>Centros com dados</span><strong>{v2Executive.costCenterCount}</strong><small>Classificação explícita</small></div>
-         <div className="card"><span>Sem centro</span><strong>{v2Executive.unassignedCostCenterEntries}</strong><small>Lançamentos sem rateio</small></div>
-         <div className="card"><span>Receita por centros</span><strong>{brl(v2Executive.costCenters.filter(row=>row.costCenterId).reduce((sum,row)=>sum+row.receita,0))}</strong><small>Competência {selectedV2Period}</small></div>
-         <div className="card"><span>OPEX por centros</span><strong>{brl(v2Executive.costCenters.filter(row=>row.costCenterId).reduce((sum,row)=>sum+row.opex,0))}</strong><small>Sem redistribuição automática</small></div>
-        </div>
-        <div className="table-wrap" style={{marginTop:16,overflowX:'auto'}}>
-         <table>
-          <thead><tr><th>Centro</th><th>Receita</th><th>Custos</th><th>OPEX</th><th>EBITDA</th><th>Margem EBITDA</th><th>Resultado</th><th>Margem líquida</th></tr></thead>
-          <tbody>
-           {v2Executive.costCenters.map(row=>{
-            const margemEbitda=Math.abs(row.receita)>=0.005?row.ebitdaImpact/row.receita:undefined
-            const margemLiquida=Math.abs(row.receita)>=0.005?row.resultadoLiquido/row.receita:undefined
-            return <tr key={row.costCenterId??'sem'}>
-             <td><strong>{row.code}</strong><small style={{display:'block'}}>{row.name}</small></td>
-             <td className="amount">{brl(row.receita)}</td>
-             <td className="amount">{brl(row.custos)}</td>
-             <td className="amount">{brl(row.opex)}</td>
-             <td className="amount"><strong>{brl(row.ebitdaImpact)}</strong></td>
-             <td className="amount">{margemEbitda===undefined?'—':(margemEbitda*100).toFixed(1).replace('.',',')+'%'}</td>
-             <td className="amount"><strong>{brl(row.resultadoLiquido)}</strong></td>
-             <td className="amount">{margemLiquida===undefined?'—':(margemLiquida*100).toFixed(1).replace('.',',')+'%'}</td>
-            </tr>
-           })}
-          </tbody>
-         </table>
-        </div>
-        <div className="note" style={{marginTop:12}}><strong>Rastreabilidade:</strong> os valores acima vêm diretamente dos lançamentos V2 classificados no centro selecionado. Lançamentos sem centro permanecem separados e não são rateados, inferidos ou redistribuídos.</div>
-       </div>
-      )}
-     </section>
+    <CostCenterCockpitPanel report={v2Executive} period={selectedV2Period}/>
 
     <div className="cards">
      <div className="card"><span>Receita V2</span><strong>{brl(v2Dre?.receita??0)}</strong><small>Competência {selectedV2Period}</small></div>
@@ -237,7 +218,7 @@ export default function DemonstracoesIntegradas(){
       {v2Audit.issues.length===0 ? <div className="note">Nenhuma pendência estrutural detectada no período.</div> : <div className="rows">{v2Audit.issues.map(issue=><div className="row" key={issue.code}><span>{issue.title}<small style={{display:'block'}}>{issue.detail}</small></span><b>{issue.count}</b></div>)}</div>}
      </section>
     </section>
-   </div>}
+   </>}
   </section>
 
   <section className="panel" style={{marginBottom:24}}>
