@@ -19,3 +19,9 @@ As últimas competências disponíveis na DRE/DFC são exibidas em uma série co
 
 ## Governança
 DRE continua baseada em competência, DFC em liquidação e BP em fotografia acumulada. O cockpit apenas apresenta os resultados dos motores existentes; não cria ajustes, encerramentos automáticos ou classificações artificiais.
+
+## Centros de resultado
+
+O cockpit também consolida a DRE por centro de resultado, exibindo Receita, Custos, OPEX, EBITDA, margem EBITDA, Resultado líquido e margem líquida por centro na competência selecionada. Lançamentos sem centro permanecem em uma linha separada para governança e não recebem rateio, inferência ou redistribuição automática.
+
+A dimensão de centro de resultado é uma leitura derivada dos lançamentos V2 já classificados. Ela não cria uma nova fonte de verdade nem altera os motores de DRE, DFC ou BP.
