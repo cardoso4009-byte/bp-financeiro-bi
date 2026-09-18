@@ -38,5 +38,7 @@ jobs:
         run: npm run v2:bp:gate
       - name: V2 DRE Gate
         run: npm run v2:dre:gate
+      - name: V2 Reconciliation Gate
+        run: npm run v2:reconciliation:gate
       - name: Build application
         run: npm run build
