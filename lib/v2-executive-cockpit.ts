@@ -3,6 +3,7 @@ import type { V2DreReport } from './v2-dre'
 import type { V2BpReport } from './v2-bp'
 import type { V2FinancialBase } from './v2-financial-base'
 import type { V2ReconciliationAudit } from './v2-reconciliation'
+import type { V2CostCenterReport } from './v2-cost-center'
 
 export interface V2ExecutiveTrendRow {
   period: string
@@ -39,6 +40,9 @@ export interface V2ExecutiveCockpit {
     value: number
   }>
   trend: V2ExecutiveTrendRow[]
+  costCenters: V2CostCenterReport['rows']
+  costCenterCount: number
+  unassignedCostCenterEntries: number
 }
 
 function find<T extends { period: string }>(items: T[] | undefined, period: string): T | undefined {
@@ -65,6 +69,7 @@ export function buildV2ExecutiveCockpit(
   audit: V2ReconciliationAudit,
   selectedPeriod: string,
   previousPeriod?: string,
+  costCenterReport?: V2CostCenterReport,
 ): V2ExecutiveCockpit {
   const dre = find(dreReport.periods, selectedPeriod)
   const previousDre = previousPeriod ? find(dreReport.periods, previousPeriod) : undefined
@@ -124,5 +129,8 @@ export function buildV2ExecutiveCockpit(
     duplicateExternalIds: audit.duplicateExternalIds,
     drivers,
     trend,
+    costCenters: costCenterReport?.rows ?? [],
+    costCenterCount: costCenterReport?.rows.filter((row) => Boolean(row.costCenterId)).length ?? 0,
+    unassignedCostCenterEntries: costCenterReport?.unassignedEntries ?? 0,
   }
 }
