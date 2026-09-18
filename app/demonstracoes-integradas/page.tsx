@@ -11,8 +11,10 @@ import { buildV2Dfc } from '@/lib/v2-dfc'
 import { buildV2Bp } from '@/lib/v2-bp'
 import { buildV2ReconciliationAudit } from '@/lib/v2-reconciliation'
 import { buildV2ExecutiveCockpit } from '@/lib/v2-executive-cockpit'
+import { buildV2CostCenterReport } from '@/lib/v2-cost-center'
 import { readV2BrowserStore } from '@/lib/v2-browser-storage'
 import { readV2Accounts } from '@/lib/v2-account-storage'
+import { readV2CostCenters } from '@/lib/v2-cost-center-storage'
 import type { Account } from '@/lib/v2-data-model'
 
 const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0})
@@ -21,10 +23,12 @@ export default function DemonstracoesIntegradas(){
  const [period,setPeriod]=useState<ReportPeriod>(DEFAULT_REPORT_PERIOD)
  const [v2Entries,setV2Entries]=useState<ReturnType<typeof readV2BrowserStore>['entries']>([])
  const [v2Accounts,setV2Accounts]=useState<Account[]>([])
+ const [v2Centers,setV2Centers]=useState<ReturnType<typeof readV2CostCenters>>([])
 
  useEffect(()=>{
   setV2Entries(readV2BrowserStore().entries)
   setV2Accounts(readV2Accounts())
+  setV2Centers(readV2CostCenters())
  },[])
 
  const years=useMemo(()=>Array.from(new Set(sampleJournal.map(e=>Number(String(e.competence??'').slice(0,4))).filter(y=>y>2000))).sort((a,b)=>a-b),[])
@@ -41,7 +45,8 @@ export default function DemonstracoesIntegradas(){
  const v2Bp=useMemo(()=>v2BpReady?buildV2Bp(v2Base,v2Accounts,selectedV2Period):null,[v2Base,v2Accounts,v2BpReady,selectedV2Period])
  const previousV2Bp=useMemo(()=>v2BpReady?buildV2Bp(v2Base,v2Accounts,previous):null,[v2Base,v2Accounts,v2BpReady,previous])
  const v2Audit=useMemo(()=>buildV2ReconciliationAudit(v2Base,v2Accounts,buildV2Dre(v2Base,selectedV2Period),v2DfcReport,v2Bp,selectedV2Period,previous,previousV2Bp),[v2Base,v2Accounts,v2DfcReport,v2Bp,previousV2Bp,selectedV2Period,previous])
- const v2Executive=useMemo(()=>buildV2ExecutiveCockpit(v2Base,buildV2Dre(v2Base),v2DfcReport,v2Bp,v2Audit,selectedV2Period,previous),[v2Base,v2DfcReport,v2Bp,v2Audit,selectedV2Period,previous])
+ const v2CostCenterReport=useMemo(()=>buildV2CostCenterReport(v2Base,v2Centers,selectedV2Period),[v2Base,v2Centers,selectedV2Period])
+ const v2Executive=useMemo(()=>buildV2ExecutiveCockpit(v2Base,buildV2Dre(v2Base),v2DfcReport,v2Bp,v2Audit,selectedV2Period,previous,v2CostCenterReport),[v2Base,v2DfcReport,v2Bp,v2Audit,selectedV2Period,previous,v2CostCenterReport])
 
  const periodEntries=useMemo(()=>sampleJournal.filter(e=>{const c=e.competence??e.date.slice(0,7);if(period.view==='mensal'||period.view==='comparativo') return c===selected;return c>=competence(period.year,1)&&c<=selected}),[period.view,period.year,selected])
  const opening=useMemo(()=>sampleJournal.filter(e=>(e.competence??e.date.slice(0,7))<competence(period.year,1)),[period.year])
@@ -104,7 +109,20 @@ export default function DemonstracoesIntegradas(){
        <span>{item.period}</span><span>{brl(item.receita)}</span><span>{brl(item.ebitda)}</span><span>{brl(item.resultadoLiquido)}</span><span>{brl(item.variacaoCaixa)}</span>
       </div>)}
      </section>
-    </section>
+
+     <section className="panel" style={{marginTop:20}}>
+      <div className="panel-title"><div><h2>Resultado por centro de resultado</h2><span>${selectedV2Period} • dimensão gerencial explícita</span></div><span>{v2Executive.costCenterCount} centro(s) com dados</span></div>
+      {v2Executive.costCenters.length===0 ? <div className="note">Nenhum lançamento com centro de resultado na competência selecionada. A ausência de classificação não é redistribuída automaticamente.</div> : <>
+       <div className="cards">
+        <div className="card"><span>Centros com dados</span><strong>{v2Executive.costCenterCount}</strong><small>Classificação explícita</small></div>
+        <div className="card"><span>Sem centro</span><strong>{v2Executive.unassignedCostCenterEntries}</strong><small>Lançamentos sem rateio</small></div>
+        <div className="card"><span>Receita por centros</span><strong>{brl(v2Executive.costCenters.filter(row=>row.costCenterId).reduce((sum,row)=>sum+row.receita,0))}</strong><small>Competência ${selectedV2Period}</small></div>
+        <div className="card"><span>OPEX por centros</span><strong>{brl(v2Executive.costCenters.filter(row=>row.costCenterId).reduce((sum,row)=>sum+row.opex,0))}</strong><small>Sem redistribuição automática</small></div>
+       </div>
+       <div className="table-wrap" style={{marginTop:16,overflowX:'auto'}}><table><thead><tr><th>Centro</th><th>Receita</th><th>Custos</th><th>OPEX</th><th>EBITDA</th><th>Margem EBITDA</th><th>Resultado</th><th>Margem líquida</th></tr></thead><tbody>{v2Executive.costCenters.map(row=>{const margemEbitda=Math.abs(row.receita)>=0.005?row.ebitdaImpact/row.receita:undefined;const margemLiquida=Math.abs(row.receita)>=0.005?row.resultadoLiquido/row.receita:undefined;return <tr key={row.costCenterId??'sem'}><td><strong>{row.code}</strong><small style={{display:'block'}}>{row.name}</small></td><td className="amount">{brl(row.receita)}</td><td className="amount">{brl(row.custos)}</td><td className="amount">{brl(row.opex)}</td><td className="amount"><strong>{brl(row.ebitdaImpact)}</strong></td><td className="amount">{margemEbitda===undefined?'—':(margemEbitda*100).toFixed(1).replace('.',',')+'%'}</td><td className="amount"><strong>{brl(row.resultadoLiquido)}</strong></td><td className="amount">{margemLiquida===undefined?'—':(margemLiquida*100).toFixed(1).replace('.',',')+'%'}</td></tr>})}</tbody></table></div>
+       <div className="note" style={{marginTop:12}}><strong>Rastreabilidade:</strong> os valores acima vêm diretamente dos lançamentos V2 classificados no centro selecionado. Lançamentos sem centro permanecem separados e não são rateados, inferidos ou redistribuídos.</div>
+      </>}
+     </section>
 
     <div className="cards">
      <div className="card"><span>Receita V2</span><strong>{brl(v2Dre?.receita??0)}</strong><small>Competência {selectedV2Period}</small></div>
