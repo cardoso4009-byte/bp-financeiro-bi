@@ -44,5 +44,7 @@ jobs:
         run: npm run v2:reconciliation:gate
       - name: V2 Executive Cockpit Gate
         run: npm run v2:executive:gate
+      - name: V2 Cost Center Gate
+        run: npm run v2:cost-center:gate
       - name: Build application
         run: npm run build
