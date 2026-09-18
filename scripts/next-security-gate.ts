@@ -5,7 +5,7 @@ const pkg=JSON.parse(fs.readFileSync('package.json','utf8')) as {dependencies?:R
 const nextVersion=pkg.dependencies?.next
 assert.ok(nextVersion,'Next.js dependency must be declared')
 
-const match=nextVersion.match(/^(\d+)\\.(\d+)\\.(\d+)$/)
+const match=nextVersion.match(/^(\d+)\.(\d+)\.(\d+)$/)
 assert.ok(match,'Next.js version must be pinned, received: '+nextVersion)
 const [,major,minor,patch]=match.map(Number)
 
