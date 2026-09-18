@@ -126,7 +126,3 @@ export function buildV2ExecutiveCockpit(
     trend,
   }
 }
-
-// Mantém o parâmetro base explícito no contrato do cockpit para impedir
-// que a visão executiva se torne uma segunda fonte de verdade.
-void base
