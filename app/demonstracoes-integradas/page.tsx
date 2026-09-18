@@ -236,7 +236,7 @@ export default function DemonstracoesIntegradas(){
       {v2Audit.issues.length===0 ? <div className="note">Nenhuma pendência estrutural detectada no período.</div> : <div className="rows">{v2Audit.issues.map(issue=><div className="row" key={issue.code}><span>{issue.title}<small style={{display:'block'}}>{issue.detail}</small></span><b>{issue.count}</b></div>)}</div>}
      </section>
     </section>
-   </>}
+   </div>}
   </section>
 
   <section className="panel" style={{marginBottom:24}}>
