@@ -69,6 +69,7 @@ export default function DemonstracoesIntegradas(){
   setV2Entries(readV2BrowserStore().entries)
   setV2Accounts(readV2Accounts())
   setV2Centers(readV2CostCenters())
+  setV2Centers(readV2CostCenters())
  },[])
 
  const years=useMemo(()=>Array.from(new Set(sampleJournal.map(e=>Number(String(e.competence??'').slice(0,4))).filter(y=>y>2000))).sort((a,b)=>a-b),[])
