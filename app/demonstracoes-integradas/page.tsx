@@ -20,7 +20,12 @@ import type { Account } from '@/lib/v2-data-model'
 const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0})
 
 
-function CostCenterCockpitPanel({report,period}:{report:ReturnType<typeof buildV2ExecutiveCockpit>;period:string}){
+function CostCenterCockpitPanel({report,period,entries,accounts}:{report:ReturnType<typeof buildV2ExecutiveCockpit>;period:string;entries:ReturnType<typeof readV2BrowserStore>['entries'];accounts:Account[]}){
+ const [selectedCenterId,setSelectedCenterId]=useState<string | undefined>()
+ const accountNames=useMemo(()=>new Map(accounts.map(account=>[account.id,`${account.code} • ${account.name}`])),[accounts])
+ const selectedRow=report.costCenters.find(row=>row.costCenterId===selectedCenterId)
+ const detailEntries=useMemo(()=>entries.filter(entry=>entry.competence===period && entry.costCenterId===selectedCenterId).sort((a,b)=>b.date.localeCompare(a.date)),[entries,period,selectedCenterId])
+ useEffect(()=>{if(selectedCenterId && !selectedRow)setSelectedCenterId(undefined)},[selectedCenterId,selectedRow])
  return <section className="panel" style={{marginTop:20}}>
   <div className="panel-title"><div><h2>Resultado por centro de resultado</h2><span>{period} • dimensão gerencial explícita</span></div><span>{report.costCenterCount} centro(s) com dados</span></div>
   {report.costCenters.length===0 ? <div className="note">Nenhum lançamento com centro de resultado na competência selecionada. A ausência de classificação não é redistribuída automaticamente.</div> : <>
@@ -30,8 +35,26 @@ function CostCenterCockpitPanel({report,period}:{report:ReturnType<typeof buildV
     <div className="card"><span>Receita por centros</span><strong>{brl(report.costCenters.filter(row=>row.costCenterId).reduce((sum,row)=>sum+row.receita,0))}</strong><small>Competência {period}</small></div>
     <div className="card"><span>OPEX por centros</span><strong>{brl(report.costCenters.filter(row=>row.costCenterId).reduce((sum,row)=>sum+row.opex,0))}</strong><small>Sem redistribuição automática</small></div>
    </div>
-   <div className="table-wrap" style={{marginTop:16,overflowX:'auto'}}><table><thead><tr><th>Centro</th><th>Receita</th><th>Custos</th><th>OPEX</th><th>EBITDA</th><th>Margem EBITDA</th><th>Resultado</th><th>Margem líquida</th></tr></thead><tbody>{report.costCenters.map(row=>{const margemEbitda=Math.abs(row.receita)>=0.005?row.ebitdaImpact/row.receita:undefined;const margemLiquida=Math.abs(row.receita)>=0.005?row.resultadoLiquido/row.receita:undefined;return <tr key={row.costCenterId??'sem'}><td><strong>{row.code}</strong><small style={{display:'block'}}>{row.name}</small></td><td className="amount">{brl(row.receita)}</td><td className="amount">{brl(row.custos)}</td><td className="amount">{brl(row.opex)}</td><td className="amount"><strong>{brl(row.ebitdaImpact)}</strong></td><td className="amount">{margemEbitda===undefined?'—':(margemEbitda*100).toFixed(1).replace('.',',')+'%'}</td><td className="amount"><strong>{brl(row.resultadoLiquido)}</strong></td><td className="amount">{margemLiquida===undefined?'—':(margemLiquida*100).toFixed(1).replace('.',',')+'%'}</td></tr>})}</tbody></table></div>
-   <div className="note" style={{marginTop:12}}><strong>Rastreabilidade:</strong> os valores vêm diretamente dos lançamentos V2 classificados no centro. Lançamentos sem centro permanecem separados e não são rateados, inferidos ou redistribuídos.</div>
+   <div className="table-wrap" style={{marginTop:16,overflowX:'auto'}}><table><thead><tr><th>Centro</th><th>Receita</th><th>Custos</th><th>OPEX</th><th>EBITDA</th><th>Margem EBITDA</th><th>Resultado</th><th>Margem líquida</th></tr></thead><tbody>{report.costCenters.map(row=>{const margemEbitda=Math.abs(row.receita)>=0.005?row.ebitdaImpact/row.receita:undefined;const margemLiquida=Math.abs(row.receita)>=0.005?row.resultadoLiquido/row.receita:undefined;const selected=row.costCenterId===selectedCenterId;return <tr key={row.costCenterId??'sem'} onClick={()=>row.costCenterId&&setSelectedCenterId(row.costCenterId)} style={{cursor:row.costCenterId?'pointer':undefined,fontWeight:selected?600:undefined}}><td><strong>{row.code}</strong><small style={{display:'block'}}>{row.name}</small></td><td className="amount">{brl(row.receita)}</td><td className="amount">{brl(row.custos)}</td><td className="amount">{brl(row.opex)}</td><td className="amount"><strong>{brl(row.ebitdaImpact)}</strong></td><td className="amount">{margemEbitda===undefined?'—':(margemEbitda*100).toFixed(1).replace('.',',')+'%'}</td><td className="amount"><strong>{brl(row.resultadoLiquido)}</strong></td><td className="amount">{margemLiquida===undefined?'—':(margemLiquida*100).toFixed(1).replace('.',',')+'%'}</td></tr>})}</tbody></table></div>
+   <div className="note" style={{marginTop:12}}>Clique em um centro para abrir sua visão detalhada. Lançamentos sem centro permanecem separados e não são rateados.</div>
+   {selectedRow && <section className="panel" style={{marginTop:20}}>
+    <div className="panel-title"><div><h2>{selectedRow.code} • {selectedRow.name}</h2><span>Detalhamento da competência {period}</span></div><button type="button" onClick={()=>setSelectedCenterId(undefined)}>Fechar detalhe</button></div>
+    <div className="cards">
+     <div className="card"><span>Receita</span><strong>{brl(selectedRow.receita)}</strong><small>Competência</small></div>
+     <div className="card"><span>OPEX</span><strong>{brl(selectedRow.opex)}</strong><small>Despesas operacionais</small></div>
+     <div className="card"><span>EBITDA</span><strong>{brl(selectedRow.ebitdaImpact)}</strong><small>Receita + custos + OPEX</small></div>
+     <div className="card"><span>Resultado líquido</span><strong>{brl(selectedRow.resultadoLiquido)}</strong><small>Após financeiro e impostos</small></div>
+    </div>
+    <div className="rows" style={{marginTop:16}}>
+     <div className="row"><span>Custos</span><b>{brl(selectedRow.custos)}</b></div>
+     <div className="row"><span>Resultado financeiro</span><b>{brl(selectedRow.resultadoFinanceiro)}</b></div>
+     <div className="row"><span>Impostos</span><b>{brl(selectedRow.impostos)}</b></div>
+     <div className="row"><span>CAPEX <small style={{display:'block'}}>Fora do EBITDA e do resultado</small></span><b>{brl(selectedRow.capex)}</b></div>
+    </div>
+    <div className="panel-title" style={{marginTop:20}}><div><h2>Lançamentos do centro</h2><span>{detailEntries.length} lançamento(s) • origem V2</span></div></div>
+    {detailEntries.length===0 ? <div className="note">Não há lançamentos persistidos para este centro na competência selecionada.</div> : <div className="table-wrap" style={{overflowX:'auto'}}><table><thead><tr><th>Data</th><th>Conta</th><th>Descrição</th><th>Classe</th><th>Natureza</th><th>Valor</th><th>Liquidação</th></tr></thead><tbody>{detailEntries.map(entry=><tr key={entry.id}><td>{entry.date}</td><td>{accountNames.get(entry.accountId)??entry.accountId}</td><td>{entry.description}</td><td>{entry.movementClass}</td><td>{entry.nature}</td><td className="amount">{brl(entry.amount)}</td><td>{entry.settlementDate??'Em aberto'}</td></tr>)}</tbody></table></div>}
+    <div className="note" style={{marginTop:12}}><strong>Trilha:</strong> cada linha acima é um lançamento V2 persistido e mantém conta, classe, natureza, competência e liquidação. O detalhe não recalcula nem cria rateios.</div>
+   </section>}
   </>}
  </section>
 }
@@ -128,7 +151,7 @@ export default function DemonstracoesIntegradas(){
      </section>
     </section>
 
-    <CostCenterCockpitPanel report={v2Executive} period={selectedV2Period}/>
+    <CostCenterCockpitPanel report={v2Executive} period={selectedV2Period} entries={v2Entries} accounts={v2Accounts}/>
 
     <div className="cards">
      <div className="card"><span>Receita V2</span><strong>{brl(v2Dre?.receita??0)}</strong><small>Competência {selectedV2Period}</small></div>
