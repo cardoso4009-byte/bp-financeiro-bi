@@ -64,7 +64,6 @@ export default function DemonstracoesIntegradas(){
  const [v2Entries,setV2Entries]=useState<ReturnType<typeof readV2BrowserStore>['entries']>([])
  const [v2Accounts,setV2Accounts]=useState<Account[]>([])
  const [v2Centers,setV2Centers]=useState<ReturnType<typeof readV2CostCenters>>([])
- const [v2Centers,setV2Centers]=useState<ReturnType<typeof readV2CostCenters>>([])
 
  useEffect(()=>{
   setV2Entries(readV2BrowserStore().entries)
