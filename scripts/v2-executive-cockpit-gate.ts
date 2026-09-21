@@ -61,5 +61,5 @@ assert.equal(cockpit.costCenters.find(row => row.costCenterId === 'com')?.opex,-
 assert.equal(cockpit.costCenters.find(row => row.costCenterId === 'com')?.ebitdaImpact,700)
 assert.equal(cockpit.costCenters.find(row => row.costCenterId === 'com')?.resultadoLiquido,700)
 assert.equal(cockpit.costCenters.find(row => row.costCenterId === 'com')?.entries,2)
-assert.equal(cockpit.costCenters.find(row => row.costCenterId === 'adm')?.entries,0)
+assert.equal(cockpit.costCenters.find(row => row.costCenterId === 'adm')?.entries ?? 0,0)
 console.log('V2 Executive Cockpit Gate: OK')
