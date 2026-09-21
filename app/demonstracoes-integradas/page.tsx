@@ -22,7 +22,7 @@ const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',
 
 function CostCenterCockpitPanel({report,period,entries,accounts}:{report:ReturnType<typeof buildV2ExecutiveCockpit>;period:string;entries:ReturnType<typeof readV2BrowserStore>['entries'];accounts:Account[]}){
  const [selectedCenterId,setSelectedCenterId]=useState<string | undefined>()
- const accountNames=useMemo(()=>new Map(accounts.map(account=>[account.id,\`${account.code} • ${account.name}\`])),[accounts])
+ const accountNames=useMemo(()=>new Map(accounts.map(account=>[account.id,`${account.code} • ${account.name}`])),[accounts])
  const selectedRow=report.costCenters.find(row=>row.costCenterId===selectedCenterId)
  const detailEntries=useMemo(()=>entries.filter(entry=>entry.competence===period && entry.costCenterId===selectedCenterId).sort((a,b)=>b.date.localeCompare(a.date)),[entries,period,selectedCenterId])
  useEffect(()=>{if(selectedCenterId && !selectedRow)setSelectedCenterId(undefined)},[selectedCenterId,selectedRow])
