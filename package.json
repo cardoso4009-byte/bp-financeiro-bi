@@ -18,7 +18,8 @@
     "v2:reconciliation:gate": "tsx scripts/v2-reconciliation-gate.ts",
     "v2:executive:gate": "tsx scripts/v2-executive-cockpit-gate.ts",
     "v2:cost-center:gate": "tsx scripts/v2-cost-center-gate.ts",
-    "security:next:gate": "tsx scripts/next-security-gate.ts"
+    "security:next:gate": "tsx scripts/next-security-gate.ts",
+    "v2:budget:gate": "tsx scripts/v2-budget-gate.ts"
   },
   "dependencies": {
     "next": "15.5.25",
