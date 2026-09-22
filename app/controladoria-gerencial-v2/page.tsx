@@ -1,0 +1,51 @@
+'use client'
+
+import { useMemo, useState } from 'react'
+import { ReportPeriodFilter, DEFAULT_REPORT_PERIOD } from '@/components/report-period-filter'
+import { competence } from '@/lib/report-period'
+import { buildV2FinancialBase } from '@/lib/v2-financial-base'
+import { buildV2BudgetReport } from '@/lib/v2-budget'
+import { readV2BrowserStore } from '@/lib/v2-browser-store'
+import { readV2CostCenters } from '@/lib/v2-cost-center-store'
+import { readV2BudgetEntries } from '@/lib/v2-budget-storage'
+import { buildManagementAlerts, DEFAULT_MANAGEMENT_THRESHOLDS } from '@/lib/v2-management'
+import type { ManagementAlertLevel } from '@/lib/v2-management'
+
+const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0})
+const levelLabel:Record<ManagementAlertLevel,string>={normal:'Normal',atencao:'Atenção',critico:'Crítico'}
+const levelClass=(l:ManagementAlertLevel)=>l==='critico'?'critical':l==='atencao'?'attention':'normal'
+
+export default function ControladoriaGerencialV2(){
+ const [period,setPeriod]=useState({...DEFAULT_REPORT_PERIOD,month:12})
+ const [selected,setSelected]=useState<string|null>(null)
+ const entries=useMemo(()=>readV2BrowserStore(),[])
+ const budget=useMemo(()=>readV2BudgetEntries(),[])
+ const centers=useMemo(()=>readV2CostCenters(),[])
+ const base=useMemo(()=>buildV2FinancialBase(entries),[entries])
+ const report=useMemo(()=>buildV2BudgetReport(base,budget,centers,competence(period)),[base,budget,centers,period])
+ const alerts=useMemo(()=>buildManagementAlerts(report.lines,DEFAULT_MANAGEMENT_THRESHOLDS),[report.lines])
+ const filtered=alerts.filter(a=>a.level!=='normal')
+ const current=selected?alerts.find(a=>a.id===selected):undefined
+ return <main className="page">
+  <style>{'.page{max-width:1400px;margin:auto;padding:28px;font-family:Arial,sans-serif;color:#10243b}.head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.eyebrow{font-size:11px;color:#6c8298;font-weight:800;letter-spacing:.1em}.head h1{margin:6px 0;font-size:30px}.head p{margin:0;color:#6c8298}.filter{background:#fff;border:1px solid #dce6f0;border-radius:12px;padding:10px 14px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:22px 0}.card,.panel{background:#fff;border:1px solid #dce6f0;border-radius:14px}.card{padding:18px}.card span{display:block;color:#70869c;font-size:12px}.card strong{display:block;font-size:24px;margin-top:7px}.card small{display:block;margin-top:5px;color:#8094a8}.panel{padding:20px}.panel h2{margin:0;font-size:17px}.panel-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.panel-title span{font-size:11px;color:#7b8fa4}.layout{display:grid;grid-template-columns:1.35fr .9fr;gap:14px}.row{display:grid;grid-template-columns:1.3fr .8fr .8fr .8fr .65fr;gap:10px;padding:11px 0;border-top:1px solid #edf1f5;align-items:center;font-size:12px}.row b{text-align:right}.badge{justify-self:end;padding:5px 8px;border-radius:999px;font-weight:800}.badge.critical{background:#ffe4e4;color:#b42318}.badge.attention{background:#fff0cc;color:#8a5b00}.badge.normal{background:#e5f7ec;color:#18794e}.alert{padding:13px;border-top:1px solid #edf1f5;cursor:pointer}.alert:first-child{border-top:0}.alert strong{font-size:13px}.alert small{display:block;color:#73879a;margin-top:4px}.detail{margin-top:15px;background:#f7f9fc;border-radius:10px;padding:14px}.detail dl{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 0}.detail dt{font-size:10px;color:#7b8fa4;text-transform:uppercase}.detail dd{margin:2px 0 0;font-weight:700}.note{margin-top:15px;padding:13px;border-left:4px solid #4d8ed8;background:#f4f8fd;color:#52697e;font-size:12px}@media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}.layout{grid-template-columns:1fr}}@media(max-width:600px){.page{padding:16px}.cards{grid-template-columns:1fr}.row{grid-template-columns:1fr 1fr}.row>:nth-child(n+3){display:none}}'}</style>
+  <div className="head"><div><div className="eyebrow">CONTROLADORIA GERENCIAL V2</div><h1>Causa → Alerta → Ação</h1><p>Desvios Orçado × Realizado com rastreabilidade até a Base Financeira V2.</p></div><div className="filter"><ReportPeriodFilter value={period} onChange={setPeriod} years={[2026]}/></div></div>
+  <div className="cards">
+   <div className="card"><span>Linhas analisadas</span><strong>{alerts.length}</strong><small>Competência selecionada</small></div>
+   <div className="card"><span>Alertas</span><strong>{filtered.length}</strong><small>Acima do limite de atenção</small></div>
+   <div className="card"><span>Críticos</span><strong>{alerts.filter(a=>a.level==='critico').length}</strong><small>Desvio ≥ 5%</small></div>
+   <div className="card"><span>Desvio total</span><strong>{brl(report.varianceTotal)}</strong><small>Realizado − Orçado</small></div>
+  </div>
+  <div className="layout">
+   <section className="panel"><div className="panel-title"><h2>Desvios por dimensão</h2><span>Sem rateio ou ajuste artificial</span></div>
+    <div className="row" style={{fontWeight:800}}><span>DIMENSÃO</span><span>ORÇADO</span><span>REALIZADO</span><span>DESVIO</span><span>STATUS</span></div>
+    {alerts.map(a=><div className="row" key={a.id}><span><b>{a.label}</b></span><span>{brl(a.budget)}</span><span>{brl(a.actual)}</span><span>{brl(a.variance)}</span><span className={'badge '+levelClass(a.level)}>{levelLabel[a.level]}</span></div>)}
+    {!alerts.length&&<p>Não há linhas orçamentárias para a competência selecionada.</p>}
+   </section>
+   <section className="panel"><div className="panel-title"><h2>Alertas que exigem análise</h2><span>{filtered.length} itens</span></div>
+    {filtered.map(a=><div className="alert" key={a.id} onClick={()=>setSelected(a.id)}><strong>{a.label}</strong><span className={'badge '+levelClass(a.level)}>{levelLabel[a.level]}</span><small>Desvio {brl(a.variance)} {a.variancePercent!==undefined?'• '+(a.variancePercent*100).toFixed(1).replace('.',',')+'%':''}</small></div>)}
+    {!filtered.length&&<p>Nenhum alerta acima do limite configurado.</p>}
+    {current&&<div className="detail"><b>Detalhamento do alerta</b><dl><div><dt>Competência</dt><dd>{current.period}</dd></div><div><dt>Origem</dt><dd>{current.sourceEntries} lançamento(s)</dd></div><div><dt>Causa</dt><dd>A registrar</dd></div><div><dt>Ação</dt><dd>Nenhuma registrada</dd></div></dl><div className="note">A causa não é inferida pelo sistema. O próximo passo é registrar a causa identificada e vinculá-la a uma ação, responsável e prazo.</div></div>}
+   </section>
+  </div>
+ </main>
+}
