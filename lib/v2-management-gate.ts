@@ -16,6 +16,14 @@ export function runV2ManagementGate(): void {
   if (alert.sourceEntries !== 2 || alert.actionIds.length !== 0) throw new Error('Management Gate: rastreabilidade inicial inválida.')
   const action: V2ManagementAction = { id:'action-test', alertId:alert.id, description:'Revisar causa', status:'aberta', createdAt:'2026-09-30T00:00:00.000Z', updatedAt:'2026-09-30T00:00:00.000Z' }
   if (action.alertId !== alert.id || action.status !== 'aberta') throw new Error('Management Gate: ação não vinculada corretamente.')
+  const entry: V2BaseRecord = { id:'entry-1', companyId:'demo', accountId:'1', description:'Teste', date:'2026-09-10', competence:'2026-09', amount:100, nature:'debit', cashBasis:'competencia', movementClass:'receita', source:'manual', reconciled:true, signedAmount:100, period:'2026-09', isCashSettled:false, costCenterId:undefined }
+  const drill = buildManagementDrilldown(alert,[entry],[action])
+  if (drill.entries.length !== 1 || drill.actions.length !== 1) throw new Error('Management Gate: drill-down inválido.')
+  const updatedCause = updateManagementAlertCause(alert,'volume','Queda de volume')
+  if (updatedCause.causeType !== 'volume' || updatedCause.causeNote !== 'Queda de volume') throw new Error('Management Gate: causa não registrada.')
+  if (validateManagementAction('') .length === 0) throw new Error('Management Gate: validação de ação inválida.')
+  const updatedAction = updateManagementAction(action,{status:'concluida',owner:'Controladoria'})
+  if (updatedAction.status !== 'concluida' || updatedAction.owner !== 'Controladoria') throw new Error('Management Gate: atualização da ação inválida.')
   console.log('V2 Management Gate: OK')
 }
 
