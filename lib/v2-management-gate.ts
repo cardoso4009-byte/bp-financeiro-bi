@@ -1,5 +1,7 @@
 import { buildManagementAlerts, classifyManagementAlert, DEFAULT_MANAGEMENT_THRESHOLDS, type V2ManagementAction } from './v2-management'
 import type { V2BudgetLine } from './v2-budget'
+import { buildManagementDrilldown, updateManagementAction, updateManagementAlertCause, validateManagementAction } from './v2-management-workflow'
+import type { V2BaseRecord } from './v2-financial-base'
 
 export function runV2ManagementGate(): void {
   const lines: V2BudgetLine[] = [
@@ -21,7 +23,7 @@ export function runV2ManagementGate(): void {
   if (drill.entries.length !== 1 || drill.actions.length !== 1) throw new Error('Management Gate: drill-down inválido.')
   const updatedCause = updateManagementAlertCause(alert,'volume','Queda de volume')
   if (updatedCause.causeType !== 'volume' || updatedCause.causeNote !== 'Queda de volume') throw new Error('Management Gate: causa não registrada.')
-  if (validateManagementAction('') .length === 0) throw new Error('Management Gate: validação de ação inválida.')
+  if (validateManagementAction('').length === 0) throw new Error('Management Gate: validação de ação inválida.')
   const updatedAction = updateManagementAction(action,{status:'concluida',owner:'Controladoria'})
   if (updatedAction.status !== 'concluida' || updatedAction.owner !== 'Controladoria') throw new Error('Management Gate: atualização da ação inválida.')
   console.log('V2 Management Gate: OK')
