@@ -31,7 +31,8 @@ export default function ControladoriaGerencialV2(){
  const budget=useMemo(()=>readV2BudgetEntries(),[])
  const centers=useMemo(()=>readV2CostCenters(),[])
  const base=useMemo(()=>buildV2FinancialBase(entries),[entries])
- const report=useMemo(()=>buildV2BudgetReport(base,budget,centers,competence(period)),[base,budget,centers,period])
+ const selectedCompetence=competence(period.year,period.month)
+ const report=useMemo(()=>buildV2BudgetReport(base,budget,centers,selectedCompetence),[base,budget,centers,selectedCompetence])
  const alerts=useMemo(()=>buildManagementAlerts(report.lines,DEFAULT_MANAGEMENT_THRESHOLDS).map(alert=>{const saved=savedAlerts.find(item=>item.id===alert.id);return saved?{...alert,causeType:saved.causeType,causeNote:saved.causeNote,actionIds:saved.actionIds,createdAt:saved.createdAt,updatedAt:saved.updatedAt}:alert}),[report.lines,savedAlerts])
  const filtered=alerts.filter(a=>a.level!=='normal')
  const current=selected?alerts.find(a=>a.id===selected):undefined
