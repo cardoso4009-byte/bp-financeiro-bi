@@ -4,7 +4,9 @@ import { useMemo, useState } from 'react'
 import { ReportPeriodFilter, DEFAULT_REPORT_PERIOD } from '@/components/report-period-filter'
 import { competence } from '@/lib/report-period'
 import { buildV2FinancialBase } from '@/lib/v2-financial-base'
-import { buildV2BudgetReport } from '@/lib/v2-budget'\nimport { buildV2ForecastReport } from '@/lib/v2-forecast'\nimport { readV2ForecastEntries } from '@/lib/v2-forecast-storage'
+import { buildV2BudgetReport } from '@/lib/v2-budget'
+import { buildV2ForecastReport } from '@/lib/v2-forecast'
+import { readV2ForecastEntries } from '@/lib/v2-forecast-storage'
 import { readV2BrowserStore } from '@/lib/v2-browser-storage'
 import { readV2CostCenters } from '@/lib/v2-cost-center-storage'
 import { readV2BudgetEntries } from '@/lib/v2-budget-storage'
@@ -25,16 +27,20 @@ export default function ControladoriaGerencialV2(){
  const [owner,setOwner]=useState('')
  const [dueDate,setDueDate]=useState('')
  const [actions,setActions]=useState<V2ManagementAction[]>(()=>readV2ManagementActions())
- const [savedAlerts,setSavedAlerts]=useState<V2ManagementAlert[]>(()=>readV2ManagementAlerts())\n const [forecastEntries]=useState(()=>readV2ForecastEntries())
+ const [savedAlerts,setSavedAlerts]=useState<V2ManagementAlert[]>(()=>readV2ManagementAlerts())
+ const [forecastEntries]=useState(()=>readV2ForecastEntries())
  const store=useMemo(()=>readV2BrowserStore(),[])
  const entries=useMemo(()=>store.entries,[store])
  const budget=useMemo(()=>readV2BudgetEntries(),[])
  const centers=useMemo(()=>readV2CostCenters(),[])
  const base=useMemo(()=>buildV2FinancialBase(entries),[entries])
  const selectedCompetence=competence(period.year,period.month)
- const report=useMemo(()=>buildV2BudgetReport(base,budget,centers,selectedCompetence),[base,budget,centers,selectedCompetence])\n const forecastReport=useMemo(()=>buildV2ForecastReport(base,budget,forecastEntries,centers,selectedCompetence,Array.from({length:12},(_,i)=>competence(period.year,i+1))),[base,budget,forecastEntries,centers,selectedCompetence,period.year])
+ const report=useMemo(()=>buildV2BudgetReport(base,budget,centers,selectedCompetence),[base,budget,centers,selectedCompetence])
+ const forecastReport=useMemo(()=>buildV2ForecastReport(base,budget,forecastEntries,centers,selectedCompetence,Array.from({length:12},(_,i)=>competence(period.year,i+1))),[base,budget,forecastEntries,centers,selectedCompetence,period.year])
  const alerts=useMemo(()=>buildManagementAlerts(report.lines,DEFAULT_MANAGEMENT_THRESHOLDS).map(alert=>{const saved=savedAlerts.find(item=>item.id===alert.id);return saved?{...alert,causeType:saved.causeType,causeNote:saved.causeNote,actionIds:saved.actionIds,createdAt:saved.createdAt,updatedAt:saved.updatedAt}:alert}),[report.lines,savedAlerts])
- const forecastAlerts=useMemo(()=>buildForecastManagementAlerts(forecastReport.lines,DEFAULT_MANAGEMENT_THRESHOLDS).map(alert=>{const saved=savedAlerts.find(item=>item.id===alert.id);return saved?{...alert,causeType:saved.causeType,causeNote:saved.causeNote,actionIds:saved.actionIds,createdAt:saved.createdAt,updatedAt:saved.updatedAt}:alert}),[forecastReport.lines,savedAlerts])\n const filtered=alerts.filter(a=>a.level!=='normal')\n const forecastFiltered=forecastAlerts.filter(a=>a.level!=='normal')
+ const forecastAlerts=useMemo(()=>buildForecastManagementAlerts(forecastReport.lines,DEFAULT_MANAGEMENT_THRESHOLDS).map(alert=>{const saved=savedAlerts.find(item=>item.id===alert.id);return saved?{...alert,causeType:saved.causeType,causeNote:saved.causeNote,actionIds:saved.actionIds,createdAt:saved.createdAt,updatedAt:saved.updatedAt}:alert}),[forecastReport.lines,savedAlerts])
+ const filtered=alerts.filter(a=>a.level!=='normal')
+ const forecastFiltered=forecastAlerts.filter(a=>a.level!=='normal')
  const current=selected?alerts.find(a=>a.id===selected):undefined
  const drilldown=current?buildManagementDrilldown(current,base.entries,actions):undefined
  const metrics=useMemo(()=>({open:actions.filter(a=>a.status==='aberta').length,inProgress:actions.filter(a=>a.status==='em_andamento').length,done:actions.filter(a=>a.status==='concluida').length,overdue:actions.filter(a=>Boolean(a.dueDate)&&a.dueDate! < new Date().toISOString().slice(0,10)&&!['concluida','cancelada'].includes(a.status)).length,noCause:alerts.filter(a=>a.level!=='normal'&&!a.causeNote).length,noAction:alerts.filter(a=>a.level!=='normal'&&!actions.some(x=>x.alertId===a.id)).length}),[actions,alerts])
@@ -46,7 +52,8 @@ export default function ControladoriaGerencialV2(){
   <div className="head"><div><div className="eyebrow">CONTROLADORIA GERENCIAL V2</div><h1>Causa → Alerta → Ação</h1><p>Desvios Orçado × Realizado com rastreabilidade até a Base Financeira V2.</p></div><div className="filter"><ReportPeriodFilter value={period} onChange={setPeriod} years={[2026]}/></div></div>
   <div className="cards"><div className="card"><span>Ações abertas</span><strong>{metrics.open}</strong><small>Em acompanhamento</small></div><div className="card"><span>Em andamento</span><strong>{metrics.inProgress}</strong><small>Execução ativa</small></div><div className="card"><span>Concluídas</span><strong>{metrics.done}</strong><small>Encerradas</small></div><div className="card"><span>Ações vencidas</span><strong>{metrics.overdue}</strong><small>Exigem acompanhamento</small></div></div>
   <div className="cards"><div className="card"><span>Forecast em alerta</span><strong>{forecastFiltered.length}</strong><small>Desvio projetado acima do limite</small></div><div className="card"><span>Linhas analisadas</span><strong>{alerts.length}</strong><small>Competência selecionada</small></div><div className="card"><span>Alertas</span><strong>{filtered.length}</strong><small>Acima do limite de atenção</small></div><div className="card"><span>Sem causa</span><strong>{metrics.noCause}</strong><small>Alertas sem justificativa registrada</small></div><div className="card"><span>Sem ação</span><strong>{metrics.noAction}</strong><small>Alertas sem ação vinculada</small></div></div>
-  <section className="panel" style={{marginBottom:14}}><div className="panel-title"><h2>Alertas de Forecast</h2><span>Orçamento × projeção futura</span></div>{forecastFiltered.length?forecastFiltered.map(a=><div className="alert" key={a.id}><strong>{a.label}</strong><span className={'badge '+levelClass(a.level)}>{levelLabel[a.level]}</span><small>{a.period} • Forecast {brl(a.budget+a.variance)} • Desvio {brl(a.variance)} {a.variancePercent!==undefined?'• '+(a.variancePercent*100).toFixed(1).replace('.',',')+'%':''}</small></div>):<p>Nenhum desvio projetado acima do limite para as competências futuras.</p>}<div className="note">Esses alertas são calculados sobre o Forecast futuro. A causa continua sendo registrada pelo gestor; o sistema não infere a explicação.</div></section>\n  <div className="layout">
+  <section className="panel" style={{marginBottom:14}}><div className="panel-title"><h2>Alertas de Forecast</h2><span>Orçamento × projeção futura</span></div>{forecastFiltered.length?forecastFiltered.map(a=><div className="alert" key={a.id}><strong>{a.label}</strong><span className={'badge '+levelClass(a.level)}>{levelLabel[a.level]}</span><small>{a.period} • Forecast {brl(a.budget+a.variance)} • Desvio {brl(a.variance)} {a.variancePercent!==undefined?'• '+(a.variancePercent*100).toFixed(1).replace('.',',')+'%':''}</small></div>):<p>Nenhum desvio projetado acima do limite para as competências futuras.</p>}<div className="note">Esses alertas são calculados sobre o Forecast futuro. A causa continua sendo registrada pelo gestor; o sistema não infere a explicação.</div></section>
+  <div className="layout">
    <section className="panel"><div className="panel-title"><h2>Desvios por dimensão</h2><span>Sem rateio ou ajuste artificial</span></div>
     <div className="row" style={{fontWeight:800}}><span>DIMENSÃO</span><span>ORÇADO</span><span>REALIZADO</span><span>DESVIO</span><span>STATUS</span></div>
     {alerts.map(a=><div className="row" key={a.id}><span><b>{a.label}</b></span><span>{brl(a.budget)}</span><span>{brl(a.actual)}</span><span>{brl(a.variance)}</span><span className={'badge '+levelClass(a.level)}>{levelLabel[a.level]}</span></div>)}
