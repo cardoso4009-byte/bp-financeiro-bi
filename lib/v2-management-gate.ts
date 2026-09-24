@@ -1,4 +1,4 @@
-import { buildManagementAlerts, classifyManagementAlert, DEFAULT_MANAGEMENT_THRESHOLDS, type V2ManagementAction } from './v2-management'
+import { buildManagementAlerts, classifyManagementAlert, createManagementAction, DEFAULT_MANAGEMENT_THRESHOLDS, type V2ManagementAction } from './v2-management'
 import type { V2BudgetLine } from './v2-budget'
 import { buildManagementDrilldown, updateManagementAction, updateManagementAlertCause, validateManagementAction } from './v2-management-workflow'
 import type { V2BaseRecord } from './v2-financial-base'
@@ -16,7 +16,9 @@ export function runV2ManagementGate(): void {
   if (classifyManagementAlert(20,0.01)!=='normal') throw new Error('Management Gate: linha normal classificada incorretamente.')
   const alert = alerts[0]
   if (alert.sourceEntries !== 2 || alert.actionIds.length !== 0) throw new Error('Management Gate: rastreabilidade inicial inválida.')
-  const action: V2ManagementAction = { id:'action-test', alertId:alert.id, description:'Revisar causa', status:'aberta', createdAt:'2026-09-30T00:00:00.000Z', updatedAt:'2026-09-30T00:00:00.000Z' }
+  const created = createManagementAction(alert.id,'Revisar causa','2026-09-30T00:00:00.000Z')
+  if (created.alertId !== alert.id || created.status !== 'aberta' || created.description !== 'Revisar causa') throw new Error('Management Gate: criação da ação inválida.')
+  const action: V2ManagementAction = { ...created, id:'action-test' }
   if (action.alertId !== alert.id || action.status !== 'aberta') throw new Error('Management Gate: ação não vinculada corretamente.')
   const entry: V2BaseRecord = { id:'entry-1', companyId:'demo', accountId:'1', description:'Teste', date:'2026-09-10', competence:'2026-09', amount:100, nature:'debit', cashBasis:'competencia', movementClass:'receita', source:'manual', reconciled:true, signedAmount:100, period:'2026-09', isCashSettled:false, costCenterId:undefined }
   const drill = buildManagementDrilldown(alert,[entry],[action])
