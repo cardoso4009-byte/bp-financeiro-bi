@@ -19,7 +19,8 @@
     "v2:executive:gate": "tsx scripts/v2-executive-cockpit-gate.ts",
     "v2:cost-center:gate": "tsx scripts/v2-cost-center-gate.ts",
     "security:next:gate": "tsx scripts/next-security-gate.ts",
-    "v2:budget:gate": "tsx scripts/v2-budget-gate.ts"
+    "v2:budget:gate": "tsx scripts/v2-budget-gate.ts",
+    "v2:management:gate": "tsx lib/v2-management-gate.ts"
   },
   "dependencies": {
     "next": "15.5.25",
