@@ -9,6 +9,7 @@ export interface ForecastEngineOptions {
   futurePeriods: string[]
   lookbackPeriods?: string[]
   source?: ForecastSource
+  manualEntries?: V2ForecastEntry[]
 }
 
 export interface ForecastEngineResult {
@@ -38,6 +39,14 @@ function dimensionKey(costCenterId: string | undefined, movementClass: MovementC
 
 function budgetAmount(entry: V2BudgetEntry): number {
   return Math.abs(entry.amount)
+}
+
+export function buildManualForecastEntries(
+  manualEntries: V2ForecastEntry[],
+  options: ForecastEngineOptions,
+): V2ForecastEntry[] {
+  const future = new Set(options.futurePeriods)
+  return manualEntries.filter(entry => entry.source === 'manual' && future.has(entry.period))
 }
 
 export function buildBudgetForecastEntries(
@@ -140,6 +149,7 @@ export function buildV2ForecastEngine(
   centers: CostCenter[],
   options: ForecastEngineOptions,
 ): ForecastEngineResult {
+  const manual = options.manualEntries ? buildManualForecastEntries(options.manualEntries, options) : []
   const budget = options.source === 'budget' || options.source === undefined
     ? buildBudgetForecastEntries(budgetEntries, options)
     : []
@@ -147,15 +157,17 @@ export function buildV2ForecastEngine(
     ? buildRunRateForecastEntries(base, centers, options)
     : []
 
-  const entries = options.source === 'budget'
-    ? budget
-    : options.source === 'run_rate'
-      ? runRate
-      : mergeForecastSources(budget, runRate)
+  const entries = options.source === 'manual'
+    ? manual
+    : options.source === 'budget'
+      ? budget
+      : options.source === 'run_rate'
+        ? runRate
+        : mergeForecastSources(manual, budget, runRate)
 
   return {
     entries,
-    source: options.source ?? 'budget',
+    source: options.source ?? (manual.length > 0 ? 'manual' : 'budget'),
     generatedPeriods: [...new Set(entries.map(entry => entry.period))].sort(),
     dimensions: new Set(entries.map(entry => dimensionKey(entry.costCenterId, entry.movementClass))).size,
   }
