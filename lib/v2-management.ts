@@ -1,9 +1,11 @@
 import type { MovementClass } from './v2-data-model'
-import type { V2BudgetLine } from './v2-budget'\nimport type { V2ForecastLine } from './v2-forecast'
+import type { V2BudgetLine } from './v2-budget'
+import type { V2ForecastLine } from './v2-forecast'
 
 export type ManagementAlertLevel = 'normal' | 'atencao' | 'critico'
 export type ManagementCauseType = 'volume' | 'preco' | 'mix' | 'timing' | 'nao_classificada' | 'outro'
-export type ManagementActionStatus = 'aberta' | 'em_andamento' | 'concluida' | 'cancelada'\nexport type ManagementAlertBasis = 'realizado' | 'forecast'
+export type ManagementActionStatus = 'aberta' | 'em_andamento' | 'concluida' | 'cancelada'
+export type ManagementAlertBasis = 'realizado' | 'forecast'
 
 export interface V2ManagementAlert {
   id: string
