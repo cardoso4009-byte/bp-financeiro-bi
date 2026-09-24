@@ -5,24 +5,24 @@ import { DEFAULT_REPORT_PERIOD, ReportPeriodFilter } from '@/components/report-p
 import type { ReportPeriod } from '@/lib/report-period'
 import { competence } from '@/lib/report-period'
 import { buildV2FinancialBase } from '@/lib/v2-financial-base'
-import { buildV2ForecastReport, type V2ForecastEntry } from '@/lib/v2-forecast'
+import { buildV2ForecastReport, type V2ForecastEntry } from '@/lib/v2-forecast'\nimport { buildBudgetForecastEntries, buildRunRateForecastEntries } from '@/lib/v2-forecast-engine'
 import { readV2BrowserStore } from '@/lib/v2-browser-storage'
 import { readV2BudgetEntries } from '@/lib/v2-budget-storage'
 import { readV2CostCenters } from '@/lib/v2-cost-center-storage'
-import { readV2ForecastEntries } from '@/lib/v2-forecast-storage'
+import { readV2ForecastEntries, writeV2ForecastEntries } from '@/lib/v2-forecast-storage'\nimport { useEffect } from 'react'
 
 const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0})
 const pct=(n:number|undefined)=>n===undefined?'—':`${(n*100).toFixed(1).replace('.',',')}%`
 const periods=Array.from({length:12},(_,i)=>`2026-${String(i+1).padStart(2,'0')}`)
 
 export default function ForecastGerencialV2(){
- const [period,setPeriod]=useState<ReportPeriod>({...DEFAULT_REPORT_PERIOD,month:9})
+ const [period,setPeriod]=useState<ReportPeriod>({...DEFAULT_REPORT_PERIOD,month:9})\n const [forecast,setForecast]=useState<V2ForecastEntry[]>([])\n const [source,setSource]=useState<'budget'|'run_rate'>('budget')\n const [message,setMessage]=useState('')\n useEffect(()=>{setForecast(readV2ForecastEntries())},[])
  const cutoff=competence(period.year,period.month)
  const base=useMemo(()=>buildV2FinancialBase(readV2BrowserStore().entries),[])
  const budget=useMemo(()=>readV2BudgetEntries(),[])
- const forecast=useMemo(()=>readV2ForecastEntries(),[])
- const centers=useMemo(()=>readV2CostCenters(),[])
- const report=useMemo(()=>buildV2ForecastReport(base,budget,forecast,centers,cutoff,periods),[base,budget,forecast,centers,cutoff])
+ 
+ const centers=useMemo(()=>readV2CostCenters(),[])\n const futurePeriods=periods.filter(p=>p>cutoff)\n const lookbackPeriods=periods.filter(p=>p<=cutoff).slice(-3)
+ const report=useMemo(()=>buildV2ForecastReport(base,budget,forecast,centers,cutoff,periods),[base,budget,forecast,centers,cutoff])\n const generateForecast=()=>{\n   const generated=source==='budget'\n     ? buildBudgetForecastEntries(budget,{companyId:base.entries[0]?.companyId ?? 'empresa',cutoffPeriod:cutoff,futurePeriods})\n     : buildRunRateForecastEntries(base,centers,{companyId:base.entries[0]?.companyId ?? 'empresa',cutoffPeriod:cutoff,futurePeriods,lookbackPeriods})\n   const preserved=forecast.filter(entry=>entry.period<=cutoff)\n   const next=[...preserved,...generated]\n   writeV2ForecastEntries(next)\n   setForecast(next)\n   setMessage(`${generated.length} projeções geradas por ${source==='budget'?'orçamento':'run rate'}.`)\n }
  const future=report.lines.filter(l=>l.status==='projetado')
  const realized=report.lines.filter(l=>l.status==='realizado')
  const receita=report.lines.filter(l=>l.movementClass==='receita').reduce((s,l)=>s+l.forecast,0)
@@ -40,7 +40,7 @@ export default function ForecastGerencialV2(){
   <section style={{display:'grid',gridTemplateColumns:'repeat(4,minmax(0,1fr))',gap:12,marginBottom:18}}>
    <Metric label="Receita Forecast" value={receita}/><Metric label="Custos Forecast" value={custos}/><Metric label="OPEX Forecast" value={opex}/><Metric label="Resultado Forecast" value={resultado}/>
   </section>
-  <section style={panel}><div style={title}><h2>Leitura executiva</h2><span>{realized.length} linhas realizadas • {future.length} projetadas</span></div>
+  <section style={panel}><div style={title}><h2>Motor de projeção</h2><span>Fonte explícita • sem rateio automático</span></div>\n   <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>\n    <select value={source} onChange={e=>setSource(e.target.value as 'budget'|'run_rate')} style={input}><option value="budget">Orçamento</option><option value="run_rate">Run rate — média dos últimos 3 meses</option></select>\n    <button onClick={generateForecast} style={button}>Gerar forecast</button>\n    {message && <span style={{fontSize:12,color:'#52718f'}}>{message}</span>}\n   </div>\n   <p style={{fontSize:12,color:'#60778e',marginBottom:0}}>Período de corte: {cutoff}. As competências futuras {futurePeriods.join(', ') || '—'} serão recalculadas pela fonte escolhida. O histórico realizado é preservado.</p>\n  </section>\n  <section style={panel}><div style={title}><h2>Leitura executiva</h2><span>{realized.length} linhas realizadas • {future.length} projetadas</span></div>
    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12}}><Note title="Forecast" text="Meses até a competência de corte permanecem como realizado; meses futuros usam o forecast informado."/><Note title="Governança" text="A projeção futura precisa ter fonte explícita. O sistema não cria causa nem redistribui valores automaticamente."/><Note title="Rastreabilidade" text={`${report.forecastEntries} registros de forecast • ${report.unassignedForecastEntries} sem centro de resultado.`}/></div>
   </section>
   <section style={panel}><div style={title}><h2>Forecast por competência</h2><span>Orçado × Forecast</span></div>
@@ -51,7 +51,7 @@ export default function ForecastGerencialV2(){
   </section>
  </main>
 }
-const panel={background:'#fff',border:'1px solid #dbe5ef',borderRadius:14,padding:18,marginBottom:16}
+const input={padding:'9px 11px',border:'1px solid #cfdbe7',borderRadius:8,background:'#fff',color:'#17304a'} as const\nconst button={padding:'9px 14px',border:0,borderRadius:8,background:'#17304a',color:'#fff',fontWeight:800,cursor:'pointer'} as const\nconst panel={background:'#fff',border:'1px solid #dbe5ef',borderRadius:14,padding:18,marginBottom:16}
 const title={display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}
 const table={width:'100%',borderCollapse:'collapse',fontSize:13} as const
 function Metric({label,value}:{label:string;value:number}){return <div style={{background:'#fff',border:'1px solid #dbe5ef',borderRadius:12,padding:16}}><small style={{color:'#70869c'}}>{label}</small><strong style={{display:'block',marginTop:8,fontSize:21}}>{brl(value)}</strong></div>}
