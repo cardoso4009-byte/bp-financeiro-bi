@@ -57,7 +57,7 @@ function forecastContribution(entry: V2ForecastEntry): number {
   return entry.movementClass === 'receita' ? entry.amount : -entry.amount
 }
 
-function key(period: string, costCenterId: string | undefined, movementClass: MovementClass): string {
+function budgetContribution(entry: V2BudgetEntry): number {\n  if (entry.movementClass === 'receita') return Math.abs(entry.amount)\n  if (entry.movementClass === 'capex') return Math.abs(entry.amount)\n  return -Math.abs(entry.amount)\n}\n\nfunction key(period: string, costCenterId: string | undefined, movementClass: MovementClass): string {
   return [period, costCenterId ?? '', movementClass].join('|')
 }
 
@@ -82,7 +82,7 @@ export function buildV2ForecastReport(
   for (const item of budget) {
     const k = key(item.period, item.costCenterId, item.movementClass)
     const current = aggregates.get(k) ?? { period:item.period, costCenterId:item.costCenterId, movementClass:item.movementClass, budget:0, actual:0, forecast:0, entries:0, status:'projetado' as ForecastStatus }
-    current.budget += item.amount
+    current.budget += budgetContribution(item)
     aggregates.set(k, current)
   }
 
@@ -131,7 +131,7 @@ export function buildV2ForecastReport(
   }).sort((a,b)=>Math.abs(b.budgetVariance)-Math.abs(a.budgetVariance))
 
   const actualTotal = actual.reduce((sum,item)=>sum+contribution(item),0)
-  const budgetTotal = budget.reduce((sum,item)=>sum+item.amount,0)
+  const budgetTotal = budget.reduce((sum,item)=>sum+budgetContribution(item),0)
   const forecastTotal = lines.reduce((sum,item)=>sum+item.forecast,0)
 
   return {
