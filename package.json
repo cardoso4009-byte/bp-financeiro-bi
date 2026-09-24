@@ -21,7 +21,8 @@
     "security:next:gate": "tsx scripts/next-security-gate.ts",
     "v2:budget:gate": "tsx scripts/v2-budget-gate.ts",
     "v2:management:gate": "tsx lib/v2-management-gate.ts",
-    "v2:forecast:gate": "tsx scripts/v2-forecast-gate.ts"
+    "v2:forecast:gate": "tsx scripts/v2-forecast-gate.ts",
+    "v2:forecast:scenario:gate": "tsx scripts/v2-forecast-scenario-gate.ts"
   },
   "dependencies": {
     "next": "15.5.25",
