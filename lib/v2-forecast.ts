@@ -57,7 +57,13 @@ function forecastContribution(entry: V2ForecastEntry): number {
   return entry.movementClass === 'receita' ? entry.amount : -entry.amount
 }
 
-function budgetContribution(entry: V2BudgetEntry): number {\n  if (entry.movementClass === 'receita') return Math.abs(entry.amount)\n  if (entry.movementClass === 'capex') return Math.abs(entry.amount)\n  return -Math.abs(entry.amount)\n}\n\nfunction key(period: string, costCenterId: string | undefined, movementClass: MovementClass): string {
+function budgetContribution(entry: V2BudgetEntry): number {
+  if (entry.movementClass === 'receita') return Math.abs(entry.amount)
+  if (entry.movementClass === 'capex') return Math.abs(entry.amount)
+  return -Math.abs(entry.amount)
+}
+
+function key(period: string, costCenterId: string | undefined, movementClass: MovementClass): string {
   return [period, costCenterId ?? '', movementClass].join('|')
 }
 
