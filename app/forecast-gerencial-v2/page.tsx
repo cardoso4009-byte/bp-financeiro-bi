@@ -46,9 +46,9 @@ export default function ForecastGerencialV2(){
  const opex=report.lines.filter(l=>l.movementClass==='opex').reduce((s,l)=>s+l.forecast,0)
  const custos=report.lines.filter(l=>l.movementClass==='custo').reduce((s,l)=>s+l.forecast,0)
  const resultado=receita+opex+custos+report.lines.filter(l=>l.movementClass==='financeiro'||l.movementClass==='imposto').reduce((s,l)=>s+l.forecast,0)
- return <main style={{padding:'28px',background:'#f4f7fb',minHeight:'100vh',color:'#17304a'}}>
+ return <main style={{padding:'28px',background:'#f5f7fa',minHeight:'100vh',color:'#172033'}}>
   <header style={{display:'flex',justifyContent:'space-between',gap:20,alignItems:'center',marginBottom:20}}>
-   <div><small style={{letterSpacing:'.12em',fontWeight:800,color:'#52718f'}}>CONTROLADORIA GERENCIAL V2</small><h1 style={{margin:'6px 0'}}>Forecast Gerencial</h1><p style={{margin:0,color:'#70869c'}}>Orçamento × Realizado × Forecast • visão anual e mensal</p></div>
+   <div><small style={{letterSpacing:'.12em',fontWeight:800,color:'#718098'}}>CONTROLADORIA GERENCIAL V2</small><h1 style={{margin:'6px 0'}}>Forecast Gerencial</h1><p style={{margin:0,color:'#718098'}}>Orçamento × Realizado × Forecast • visão anual e mensal</p></div>
    <ReportPeriodFilter value={period} onChange={setPeriod} years={[2026]}/>
   </header>
   <section style={{display:'grid',gridTemplateColumns:'repeat(5,minmax(0,1fr))',gap:12,marginBottom:18}}>
@@ -61,7 +61,7 @@ export default function ForecastGerencialV2(){
    <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
     <select value={source} onChange={e=>setSource(e.target.value as 'budget'|'run_rate')} style={input}><option value="budget">Orçamento</option><option value="run_rate">Run rate — média dos últimos 3 meses</option></select>
     <button onClick={generateForecast} style={button}>Gerar forecast</button>
-    {message && <span style={{fontSize:12,color:'#52718f'}}>{message}</span>}
+    {message && <span style={{fontSize:12,color:'#718098'}}>{message}</span>}
    </div>
    <p style={{fontSize:12,color:'#60778e',marginBottom:0}}>Período de corte: {cutoff}. As competências futuras {futurePeriods.join(', ') || '—'} serão recalculadas pela fonte escolhida. O histórico realizado é preservado.</p>
   </section>
@@ -76,11 +76,11 @@ export default function ForecastGerencialV2(){
   </section>
  </main>
 }
-const input={padding:'9px 11px',border:'1px solid #cfdbe7',borderRadius:8,background:'#fff',color:'#17304a'} as const
+const input={padding:'9px 11px',border:'1px solid #cfdbe7',borderRadius:8,background:'#fff',color:'#172033'} as const
 const button={padding:'9px 14px',border:0,borderRadius:8,background:'#17304a',color:'#fff',fontWeight:800,cursor:'pointer'} as const
 const panel={background:'#fff',border:'1px solid #dbe5ef',borderRadius:14,padding:18,marginBottom:16}
 const title={display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}
 const table={width:'100%',borderCollapse:'collapse',fontSize:13} as const
-function Metric({label,value}:{label:string;value:number}){return <div style={{background:'#fff',border:'1px solid #dbe5ef',borderRadius:12,padding:16}}><small style={{color:'#70869c'}}>{label}</small><strong style={{display:'block',marginTop:8,fontSize:21}}>{brl(value)}</strong></div>}
+function Metric({label,value}:{label:string;value:number}){return <div style={{background:'#fff',border:'1px solid #dbe5ef',borderRadius:12,padding:16}}><small style={{color:'#718098'}}>{label}</small><strong style={{display:'block',marginTop:8,fontSize:21}}>{brl(value)}</strong></div>}
 function Note({title,text}:{title:string;text:string}){return <div style={{background:'#f7fafd',border:'1px solid #e4ebf2',borderRadius:10,padding:14}}><strong>{title}</strong><p style={{fontSize:12,lineHeight:1.5,color:'#60778e'}}>{text}</p></div>}
 function Badge({text}:{text:string}){return <span style={{fontSize:10,fontWeight:800,padding:'5px 8px',borderRadius:8,background:'#edf4fb'}}>{text}</span>}
