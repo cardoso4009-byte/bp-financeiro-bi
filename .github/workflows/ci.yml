@@ -48,5 +48,9 @@ jobs:
         run: npm run v2:cost-center:gate
       - name: V2 Management Gate
         run: npm run v2:management:gate
+      - name: V2 Forecast Gate
+        run: npm run v2:forecast:gate
+      - name: V2 Forecast Scenario Gate
+        run: npm run v2:forecast:scenario:gate
       - name: Build application
         run: npm run build
