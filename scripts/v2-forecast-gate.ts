@@ -55,6 +55,7 @@ export function runV2ForecastGate(): void {
   const forecastAlerts = buildForecastManagementAlerts(report.lines)
   const forecastAlert = forecastAlerts.find(alert => alert.period === '2026-10' && alert.movementClass === 'receita')
   check(Boolean(forecastAlert && forecastAlert.basis === 'forecast' && forecastAlert.variance === 100), 'alerta forecast OK')
+  if (!forecastAlert) throw new Error('alerta forecast não encontrado')
   const caused = updateManagementAlertCause(forecastAlert, 'volume', 'Teste de causa projetada')
   const action = createManagementAction(caused.id, 'Validar premissa do forecast', '2026-09-24T12:00:00.000Z')
   check(validateManagementAction(action.description).length === 0, 'ação OK')
