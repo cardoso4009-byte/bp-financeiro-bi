@@ -162,7 +162,7 @@ export function validateV2ForecastEntries(entries: V2ForecastEntry[]): string[] 
     if(!entry.id) errors.push('Forecast sem id.')
     if(ids.has(entry.id)) errors.push(`ID de forecast duplicado: ${entry.id}`)
     ids.add(entry.id)
-    if(!/^\\d{4}-\\d{2}$/.test(entry.period)) errors.push(`Competência inválida: ${entry.period}`)
+    if(!/^\d{4}-\d{2}$/.test(entry.period)) errors.push(`Competência inválida: ${entry.period}`)
     if(!Number.isFinite(entry.amount)) errors.push(`Valor inválido: ${entry.id}`)
     if(!entry.companyId) errors.push(`Empresa ausente: ${entry.id}`)
     if(!['manual','budget','run_rate'].includes(entry.source)) errors.push(`Fonte de forecast inválida: ${entry.id}`)
