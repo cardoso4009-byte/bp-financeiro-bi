@@ -46,7 +46,7 @@ export default function ForecastGerencialV2(){
  const opex=report.lines.filter(l=>l.movementClass==='opex').reduce((s,l)=>s+l.forecast,0)
  const custos=report.lines.filter(l=>l.movementClass==='custo').reduce((s,l)=>s+l.forecast,0)
  const resultado=receita+opex+custos+report.lines.filter(l=>l.movementClass==='financeiro'||l.movementClass==='imposto').reduce((s,l)=>s+l.forecast,0)
- return <main style={{padding:'28px',background:'#f5f7fa',minHeight:'100vh',color:'#172033'}}>
+ return <main className="bp-view" style={{padding:'28px'}}>
   <header style={{display:'flex',justifyContent:'space-between',gap:20,alignItems:'center',marginBottom:20}}>
    <div><small style={{letterSpacing:'.12em',fontWeight:800,color:'#718098'}}>CONTROLADORIA GERENCIAL V2</small><h1 style={{margin:'6px 0'}}>Forecast Gerencial</h1><p style={{margin:0,color:'#718098'}}>Orçamento × Realizado × Forecast • visão anual e mensal</p></div>
    <ReportPeriodFilter value={period} onChange={setPeriod} years={[2026]}/>
