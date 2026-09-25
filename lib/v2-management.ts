@@ -17,6 +17,7 @@ export interface V2ManagementAlert {
   actual: number
   variance: number
   variancePercent?: number
+  basis?: ManagementAlertBasis
   level: ManagementAlertLevel
   sourceEntries: number
   causeType?: ManagementCauseType
