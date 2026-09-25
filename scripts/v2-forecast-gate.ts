@@ -4,13 +4,14 @@ import { buildManagementDrilldown, updateManagementAlertCause, validateManagemen
 import { createManagementAction } from '../lib/v2-management'
 import { buildBudgetForecastEntries, buildManualForecastEntries, buildRunRateForecastEntries, mergeForecastSources, validateForecastEngineResult } from '../lib/v2-forecast-engine'
 import { buildV2FinancialBase } from '../lib/v2-financial-base'
+import type { V2BudgetEntry } from '../lib/v2-budget'
 
 export function runV2ForecastGate(): void {
   const base = buildV2FinancialBase([
     { id:'actual-1', companyId:'demo', accountId:'1', costCenterId:'com', description:'Receita', date:'2026-09-10', competence:'2026-09', amount:1000, nature:'credit', cashBasis:'competencia', movementClass:'receita', source:'manual', reconciled:true },
     { id:'actual-2', companyId:'demo', accountId:'2', costCenterId:'adm', description:'Opex', date:'2026-09-10', competence:'2026-09', amount:400, nature:'debit', cashBasis:'competencia', movementClass:'opex', source:'manual', reconciled:true },
   ])
-  const budget = [
+  const budget: V2BudgetEntry[] = [
     { id:'budget-1', companyId:'demo', period:'2026-09', costCenterId:'com', movementClass:'receita', amount:900 },
     { id:'budget-2', companyId:'demo', period:'2026-10', costCenterId:'com', movementClass:'receita', amount:1200 },
   ]
