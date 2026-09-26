@@ -1,9 +1,11 @@
 import type { MovementClass } from './v2-data-model'
 import type { V2BudgetLine } from './v2-budget'
+import type { V2ForecastLine } from './v2-forecast'
 
 export type ManagementAlertLevel = 'normal' | 'atencao' | 'critico'
 export type ManagementCauseType = 'volume' | 'preco' | 'mix' | 'timing' | 'nao_classificada' | 'outro'
 export type ManagementActionStatus = 'aberta' | 'em_andamento' | 'concluida' | 'cancelada'
+export type ManagementAlertBasis = 'realizado' | 'forecast'
 
 export interface V2ManagementAlert {
   id: string
@@ -15,6 +17,7 @@ export interface V2ManagementAlert {
   actual: number
   variance: number
   variancePercent?: number
+  basis?: ManagementAlertBasis
   level: ManagementAlertLevel
   sourceEntries: number
   causeType?: ManagementCauseType
@@ -101,4 +104,33 @@ export function createManagementAction(
 ): V2ManagementAction {
   const id = `action-${alertId}-${Date.parse(now)}`
   return { id, alertId, description, status: 'aberta', createdAt: now, updatedAt: now }
+}
+
+export function buildForecastManagementAlerts(
+  lines: V2ForecastLine[],
+  thresholds: V2ManagementThresholds = DEFAULT_MANAGEMENT_THRESHOLDS,
+): V2ManagementAlert[] {
+  return lines
+    .filter(line => line.status === 'projetado')
+    .map(line => {
+      const variance = line.forecast - line.budget
+      const alert: V2ManagementAlert = {
+        id: ['forecast-alert', line.period, line.costCenterId ?? 'sem-cc', line.movementClass].join('-'),
+        period: line.period,
+        costCenterId: line.costCenterId,
+        movementClass: line.movementClass,
+        basis: 'forecast',
+        label: line.costCenterName === 'Sem centro de resultado' ? line.movementClass : `${line.costCenterCode} • ${line.movementClass}`,
+        budget: line.budget,
+        actual: line.actual,
+        variance,
+        variancePercent: line.budgetVariancePercent,
+        level: classifyManagementAlert(variance, line.budgetVariancePercent, thresholds),
+        sourceEntries: line.entries,
+        actionIds: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      return alert
+    })
 }
