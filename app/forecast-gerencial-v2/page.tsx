@@ -48,7 +48,7 @@ export default function ForecastGerencialV2(){
  const resultado=receita+opex+custos+report.lines.filter(l=>l.movementClass==='financeiro'||l.movementClass==='imposto').reduce((s,l)=>s+l.forecast,0)
  return <main style={{padding:'28px',background:'#f4f7fb',minHeight:'100vh',color:'#17304a'}}>
   <header style={{display:'flex',justifyContent:'space-between',gap:20,alignItems:'center',marginBottom:20}}>
-   <div><small style={{letterSpacing:'.12em',fontWeight:800,color:'#52718f'}}>CONTROLADORIA GERENCIAL V2</small><h1 style={{margin:'6px 0'}}>Forecast Gerencial</h1><p style={{margin:0,color:'#70869c'}}>Orçamento × Realizado × Forecast • visão anual e mensal</p></div>
+   <div><small style={{letterSpacing:'.12em',fontWeight:800,color:'#52718f'}}>CONTROLADORIA GERENCIAL</small><h1 style={{margin:'6px 0'}}>Forecast Gerencial</h1><p style={{margin:0,color:'#70869c'}}>Orçamento × Realizado × Forecast • visão anual e mensal</p></div>
    <ReportPeriodFilter value={period} onChange={setPeriod} years={[2026]}/>
   </header>
   <section style={{display:'grid',gridTemplateColumns:'repeat(5,minmax(0,1fr))',gap:12,marginBottom:18}}>
