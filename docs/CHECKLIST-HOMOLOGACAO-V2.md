@@ -27,14 +27,14 @@
 
 ## D. Controladoria
 - [ ] Orçamento × Realizado.
-- [ ] Controladoria Gerencial V2.
+- [ ] Controladoria Gerencial.
 - [ ] Identificação de desvios.
 - [ ] Alertas.
 - [ ] Causas.
 - [ ] Plano de Ação.
 
 ## E. Forecast
-- [ ] Forecast Gerencial V2.
+- [ ] Forecast Gerencial.
 - [ ] Painel Executivo Forecast.
 - [ ] Realizado × Forecast.
 - [ ] Orçamento × Forecast.
