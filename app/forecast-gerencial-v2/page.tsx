@@ -55,7 +55,7 @@ export default function ForecastGerencialV2(){
    <Metric label="Orçamento" value={report.budgetTotal}/><Metric label="Realizado" value={report.actualTotal}/><Metric label="Forecast" value={report.forecastTotal}/><Metric label="Gap Orçado × Forecast" value={report.budgetGap}/><Metric label="Gap Realizado × Forecast" value={report.forecastGap}/>
   </section>
   <section style={{display:'grid',gridTemplateColumns:'repeat(4,minmax(0,1fr))',gap:12,marginBottom:18}}>
-   <Metric label="Receita Forecast" value={receita}/><Metric label="Custos Forecast" value={custos}/><Metric label="OPEX Forecast" value={opex}/><Metric label="Resultado Forecast" value={resultado}/>
+   <Metric label="Receita Forecast" value={receita}/><Metric label="Custos Forecast" value={Math.abs(custos)}/><Metric label="OPEX Forecast" value={Math.abs(opex)}/><Metric label="Resultado Forecast" value={resultado}/>
   </section>
   <section style={panel}><div style={title}><h2>Motor de projeção</h2><span>Fonte explícita • sem rateio automático</span></div>
    <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
