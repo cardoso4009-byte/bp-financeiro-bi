@@ -22,10 +22,10 @@ export const ReportPeriodFilter = ({ value, onChange, years, showView = true }: 
       .report-period-filter{display:flex;align-items:flex-end;gap:9px;flex-wrap:wrap}
       .report-period-field{display:grid;gap:5px}
       .report-period-field label{font-size:9px;font-weight:800;letter-spacing:.08em;color:#718098;text-transform:uppercase}
-      .report-period-field select{min-width:112px;padding:9px 10px;border:1px solid #dbe1e8;border-radius:8px;background:#fff;color:#172033;font:inherit;font-size:11px}
-      .report-period-field.month select{min-width:132px}
+      .report-period-field select{min-width:140px;height:40px;padding:0 12px;border:1px solid #dbe1e8;border-radius:9px;background:#fff;color:#172033;font:inherit;font-size:12px}.report-period-field:first-child select{min-width:140px}
+      .report-period-field.month select{min-width:165px}
       .report-period-view{display:flex;border:1px solid #dbe1e8;border-radius:8px;overflow:hidden;background:#fff}
-      .report-period-view button{border:0;border-right:1px solid #e7ebf0;background:#fff;color:#40516a;padding:9px 11px;font-size:10px;font-weight:700;cursor:pointer}
+      .report-period-view button{height:40px;border:0;border-right:1px solid #e7ebf0;background:#fff;color:#40516a;padding:0 14px;font-size:11px;font-weight:700;cursor:pointer}
       .report-period-view button:last-child{border-right:0}
       .report-period-view button.active{background:#173f70;color:#fff}
       @media(max-width:650px){.report-period-filter{align-items:stretch}.report-period-field select{width:100%}.report-period-field{flex:1;min-width:105px}.report-period-field.month{min-width:130px}.report-period-view{width:100%}.report-period-view button{flex:1}}
