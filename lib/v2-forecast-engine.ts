@@ -114,7 +114,8 @@ export function buildRunRateForecastEntries(
 const SOURCE_PRIORITY: Record<ForecastSource, number> = {
   run_rate: 1,
   budget: 2,
-  manual: 3,
+  capex: 3,
+  manual: 4,
 }
 
 export function mergeForecastSources(...sources: V2ForecastEntry[][]): V2ForecastEntry[] {
