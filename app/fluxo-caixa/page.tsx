@@ -27,7 +27,7 @@ export default function FluxoCaixa() {
 
   useEffect(() => { setEntries(readFinancialSource().entries); setCapexSchedule(readCapexSchedule()) }, [])
 
-  const all = useMemo(() => buildCashForecast(scenario), [scenario])
+  const all = useMemo(() => buildCashForecast(scenario, undefined, capexSchedule), [scenario, capexSchedule])
   const start = period.view === 'acumulado' ? 0 : period.month - 1
   const end = period.month - 1
   const rows = all.slice(start, end + 1)
