@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { V2ManagementAction, ManagementActionStatus } from '@/lib/v2-management'
 import { readV2ManagementActions, writeV2ManagementActions, readV2ManagementAlerts } from '@/lib/v2-management-storage'
 import { updateManagementAction } from '@/lib/v2-management-workflow'
@@ -12,6 +12,14 @@ const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',
 export default function PlanoAcaoGerencialV2(){
   const [actions,setActions]=useState<V2ManagementAction[]>(()=>readV2ManagementActions())
   const [filter,setFilter]=useState<'todas'|ManagementActionStatus>('todas')
+  const refreshActions=()=>setActions(readV2ManagementActions())
+  useEffect(()=>{
+    const refresh=()=>refreshActions()
+    window.addEventListener('bp-management-updated',refresh)
+    window.addEventListener('storage',refresh)
+    window.addEventListener('pageshow',refresh)
+    return()=>{window.removeEventListener('bp-management-updated',refresh);window.removeEventListener('storage',refresh);window.removeEventListener('pageshow',refresh)}
+  },[])
   const alerts=useMemo(()=>readV2ManagementAlerts(),[])
   const alertMap=useMemo(()=>new Map(alerts.map(alert=>[alert.id,alert])),[alerts])
   const today=new Date().toISOString().slice(0,10)
@@ -52,7 +60,7 @@ export default function PlanoAcaoGerencialV2(){
     <div className="wrap">
       <div className="top"><div><div className="eyebrow">CONTROLADORIA GERENCIAL</div><h1>Plano de Ação</h1><p className="subtitle">Acompanhamento das ações originadas pelos alertas de variação.</p></div><div style={{display:"flex",gap:8,alignItems:"center"}}><a className="back" href="/controladoria-gerencial-v2">+ Criar ação na Controladoria</a><a className="back" href="/controladoria-gerencial-v2">← Voltar para Controladoria</a></div></div>
       <section className="metrics"><Metric label="Total de ações" value={metrics.total}/><Metric label="Abertas" value={metrics.aberta}/><Metric label="Em andamento" value={metrics.em_andamento}/><Metric label="Concluídas" value={metrics.concluida}/><Metric label="Atrasadas" value={metrics.atrasada}/></section>
-      <div className="toolbar"><div className="filters">{(['todas','aberta','em_andamento','concluida','cancelada'] as const).map(value=><button key={value} className={filter===value?'active':''} onClick={()=>setFilter(value)}>{value==='todas'?'Todas':statusLabel[value]}</button>)}</div><div className="hint">As alterações são persistidas localmente no navegador.</div></div>
+      <div className="toolbar"><div className="filters">{(['todas','aberta','em_andamento','concluida','cancelada'] as const).map(value=><button key={value} className={filter===value?'active':''} onClick={()=>setFilter(value)}>{value==='todas'?'Todas':statusLabel[value]}</button>)}</div><div style={{display:"flex",gap:8,alignItems:"center"}}><button onClick={refreshActions}>Atualizar</button><div className="hint">As alterações são persistidas localmente no navegador.</div></div></div>
       <section className="board">
         {(['aberta','em_andamento','concluida','cancelada'] as ManagementActionStatus[]).map(status=>{
           const column=visible.filter(action=>action.status===status)
