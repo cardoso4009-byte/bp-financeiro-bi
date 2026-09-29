@@ -37,6 +37,8 @@ export default function PainelExecutivoForecastV2(){
  const critical=alerts.filter(a=>a.level==='critico')
  const attention=alerts.filter(a=>a.level==='atencao')
  const openActions=actions.filter(a=>!['concluida','cancelada'].includes(a.status))
+ const overdueActions=actions.filter(a=>Boolean(a.dueDate)&&a.dueDate!<new Date().toISOString().slice(0,10)&&!['concluida','cancelada'].includes(a.status))
+ const actionsWithoutAlert=actions.filter(a=>!savedAlerts.some(alert=>alert.id===a.alertId))
  const actionAlertIds=new Set(openActions.map(a=>a.alertId))
  const alertsWithAction=alerts.filter(a=>actionAlertIds.has(a.id))
  const impactWithAction=alertsWithAction.reduce((s,a)=>s+Math.abs(a.variance),0)
@@ -58,7 +60,7 @@ export default function PainelExecutivoForecastV2(){
    <Metric label="CAPEX Orçado" value={capex.approvedBudget} sub="Investimentos aprovados"/><Metric label="CAPEX Forecast" value={capex.forecastAmount} sub="Projeção dos projetos"/><Metric label="Desvio CAPEX" value={capex.forecastVariance} sub="Forecast × orçamento"/><Metric label="Projetos CAPEX em desvio" value={capexDeviations.length} currency={false} sub="Exigem análise"/><Metric label="CAPEX sem ação" value={capexWithoutAction} currency={false} sub="Governança pendente"/>
   </section>
   <section className="cards">
-   <Metric label="Forecast × Realizado" value={report.forecastGap} sub="Diferença no período de corte"/><Metric label="Alertas críticos" value={critical.length} currency={false} sub="Projeções acima do limite"/><Metric label="Alertas em atenção" value={attention.length} currency={false} sub="Monitoramento"/><Metric label="Ações abertas" value={openActions.length} currency={false} sub="Em acompanhamento"/><Metric label="Impacto dos alertas com ação" value={impactWithAction} sub="Valor dos desvios vinculados"/>
+   <Metric label="Forecast × Realizado" value={report.forecastGap} sub="Diferença no período de corte"/><Metric label="Alertas críticos" value={critical.length} currency={false} sub="Projeções acima do limite"/><Metric label="Alertas em atenção" value={attention.length} currency={false} sub="Monitoramento"/><Metric label="Ações abertas" value={openActions.length} currency={false} sub="Em acompanhamento"/><Metric label="Ações atrasadas" value={overdueActions.length} currency={false} sub="Exigem acompanhamento"/><Metric label="Impacto dos alertas com ação" value={impactWithAction} sub="Valor dos desvios vinculados"/>
   </section>
   <section className="panel wide"><div className="panel-title"><h2>Governança CAPEX</h2><span>{capexDeviations.length} projeto(s) em desvio</span></div>{capexDeviations.length?<div className="critical-list">{capexDeviations.slice(0,6).map(p=><div className="critical-item" key={p.id}><b>{p.code} • {p.name}</b><small>Desvio {brl(p.forecastAmount-p.approvedBudget)} • {p.deviationCause?'Causa registrada':'Sem causa'} • {p.correctiveAction?'Ação registrada':'Sem ação'}{p.actionOwner?' • '+p.actionOwner:''}{p.actionDueDate?' • prazo '+p.actionDueDate:''}</small></div>)}</div>:<div className="note">Nenhum projeto CAPEX com desvio.</div>}<div className="note" style={{marginTop:10}}>O painel consolida os desvios registrados no CAPEX. Causa, ação, responsável e prazo são definidos pelo gestor.</div></section>
   <section className="grid">
@@ -74,7 +76,7 @@ export default function PainelExecutivoForecastV2(){
    {!mainDeviations.length&&<p>Nenhuma competência futura com forecast informado.</p>}
   </section>
   <section className="grid">
-   <div className="panel"><div className="panel-title"><h2>Ações em acompanhamento</h2><span>{openActions.length} abertas</span></div>{openActions.slice(0,8).map(a=><div className="action" key={a.id}><b>{a.description}</b><small>{a.owner??'Sem responsável'} • {a.dueDate??'Sem prazo'} • {a.status}</small></div>)}{!openActions.length&&<div className="note">Nenhuma ação aberta.</div>}</div>
+   <div className="panel"><div className="panel-title"><h2>Ações em acompanhamento</h2><span>{openActions.length} abertas</span></div>{openActions.slice(0,8).map(a=><div className="action" key={a.id}><b>{a.description}</b><small>{a.owner??'Sem responsável'} • {a.dueDate??'Sem prazo'} • {a.status}{overdueActions.some(x=>x.id===a.id)?' • ATRASADA':''}</small></div>)}{!openActions.length&&<div className="note">Nenhuma ação aberta.</div>}</div>
    <div className="panel"><div className="panel-title"><h2>Governança do Forecast</h2><span>Controle gerencial</span></div><div className="note">O Forecast futuro depende de fonte explícita. O sistema não faz rateio automático nem infere causas. Alertas permanecem rastreáveis por competência, centro de resultado e classe financeira.</div><div style={{marginTop:10}} className="note">{report.forecastEntries} registros de forecast • {report.unassignedForecastEntries} sem centro de resultado.</div></div>
   </section>
  </main>
