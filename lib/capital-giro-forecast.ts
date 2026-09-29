@@ -27,6 +27,7 @@ export function buildWorkingCapitalForecast(
   lines: V2ForecastLine[],
   futurePeriods: string[],
   assumptions: WorkingCapitalForecastAssumptions,
+  initialWorkingCapitalNeed = 0,
 ): WorkingCapitalForecastReport {
   const projected: WorkingCapitalForecastLine[] = []
   for (const period of futurePeriods) {
