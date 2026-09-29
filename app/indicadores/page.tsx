@@ -7,6 +7,8 @@ import { buildFinancialDiagnosis, type DiagnosisSeverity } from '@/lib/financial
 import { monthlyBalance } from '@/lib/monthly-data'
 import ReportPeriodFilter from '@/components/report-period-filter'
 import type { ReportPeriod } from '@/lib/report-period'
+import { readCapexProjects } from '@/lib/capex-storage'
+import { buildCapexReport } from '@/lib/capex'
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 const pct = (n: number) => `${(n * 100).toFixed(1).replace('.', ',')}%`
@@ -17,6 +19,11 @@ const fmt = (n: number, unit: string) => unit === 'currency' ? brl(n) : unit ===
 export default function IndicadoresPage() {
   const [period, setPeriod] = useState<ReportPeriod>({ year: 2026, month: 12, view: 'mensal' })
   const source = useMemo(() => readFinancialSource(), [])
+  const capexProjects = useMemo(() => readCapexProjects(), [])
+  const capex = useMemo(() => buildCapexReport(capexProjects), [capexProjects])
+  const capexExecution = capex.approvedBudget > 0 ? capex.realizedAmount / capex.approvedBudget : 0
+  const capexForecastExecution = capex.approvedBudget > 0 ? capex.forecastAmount / capex.approvedBudget : 0
+  const capexContractedExecution = capex.approvedBudget > 0 ? capex.contractedAmount / capex.approvedBudget : 0
   const periodEntries = useMemo(() => source.entries.filter(e => {
     const c = e.competence || e.date.slice(0, 7)
     const start = `${period.year}-${String(period.view === 'mensal' ? period.month : 1).padStart(2, '0')}`
@@ -74,6 +81,21 @@ export default function IndicadoresPage() {
       <section className="panel wide" style={{ marginBottom: 18 }}>
         <div className="panel-title"><div><h2>Diagnóstico de causas e ações</h2><span>Regras gerenciais aplicadas aos indicadores integrados</span></div><span>{diagnoses.length} sinal(is)</span></div>
         <div className="rows">{diagnoses.map(d => <DiagnosisCard key={d.key} diagnosis={d} />)}</div>
+      </section>
+
+      <section className="panel wide" style={{ marginBottom: 18 }}>
+        <div className="panel-title"><div><h2>Indicadores de investimento</h2><span>CAPEX gerencial • carteira atual</span></div><span>{capex.projectCount} projetos</span></div>
+        <div className="indicator-grid">
+          <Metric title="CAPEX Orçado" value={brl(capex.approvedBudget)} detail="Investimentos aprovados" />
+          <Metric title="CAPEX Realizado" value={brl(capex.realizedAmount)} detail="Execução registrada" />
+          <Metric title="Execução CAPEX" value={pct(capexExecution)} detail="Realizado ÷ orçamento" tone={capexExecution > 1 ? 'critical' : capexExecution > .8 ? 'attention' : 'normal'} />
+          <Metric title="CAPEX Forecast" value={brl(capex.forecastAmount)} detail="Projeção dos projetos" />
+          <Metric title="Forecast / Orçado" value={pct(capexForecastExecution)} detail="Forecast ÷ orçamento" tone={capexForecastExecution > 1 ? 'critical' : capexForecastExecution > .9 ? 'attention' : 'normal'} />
+          <Metric title="Contratado / Orçado" value={pct(capexContractedExecution)} detail="Contratado ÷ orçamento" />
+          <Metric title="Saldo futuro" value={brl(Math.max(capex.forecastAmount-capex.realizedAmount,0))} detail="Forecast − realizado" />
+          <Metric title="Desvio Forecast" value={brl(capex.forecastVariance)} detail="Forecast × orçamento" tone={capex.forecastVariance > 0 ? 'critical' : capex.forecastVariance < 0 ? 'attention' : 'normal'} />
+        </div>
+        <div className="note" style={{marginTop:14}}>Indicadores de investimento são gerenciais e não alteram automaticamente os saldos contábeis. O reconhecimento patrimonial depende da classificação e dos lançamentos correspondentes.</div>
       </section>
 
       <section className="panel wide" style={{ marginBottom: 18 }}>
