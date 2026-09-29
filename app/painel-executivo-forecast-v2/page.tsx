@@ -31,6 +31,10 @@ export default function PainelExecutivoForecastV2(){
  const capexDeviations=capexProjects.filter(p=>p.forecastAmount!==p.approvedBudget).sort((a,b)=>Math.abs(b.forecastAmount-b.approvedBudget)-Math.abs(a.forecastAmount-a.approvedBudget))
  const capexWithoutAction=capexProjects.filter(p=>p.forecastAmount!==p.approvedBudget&&!p.correctiveAction).length
  const capexOpenActions=capexProjects.filter(p=>p.forecastAmount!==p.approvedBudget&&p.correctiveAction&&p.actionStatus!=='concluida').length
+ const capexExecution=capex.approvedBudget>0?capex.realizedAmount/capex.approvedBudget:0
+ const capexForecastExecution=capex.approvedBudget>0?capex.forecastAmount/capex.approvedBudget:0
+ const capexContractedExecution=capex.approvedBudget>0?capex.contractedAmount/capex.approvedBudget:0
+ const capexFuture=Math.max(capex.forecastAmount-capex.realizedAmount,0)
  const cutoff=competence(period.year,period.month)
  const report=useMemo(()=>buildV2ForecastReport(base,budget,forecast,centers,cutoff,periods),[base,budget,forecast,centers,cutoff])
  const alerts=useMemo(()=>buildForecastManagementAlerts(report.lines).map(a=>{const saved=savedAlerts.find(x=>x.id===a.id);return saved?{...a,causeType:saved.causeType,causeNote:saved.causeNote,actionIds:saved.actionIds,createdAt:saved.createdAt,updatedAt:saved.updatedAt}:a}),[report.lines,savedAlerts])
@@ -80,4 +84,4 @@ export default function PainelExecutivoForecastV2(){
  </main>
 }
 
-function Metric({label,value,sub,currency=true}:{label:string;value:number;sub:string;currency?:boolean}){return <div className="card"><span>{label}</span><strong>{currency?brl(value):value.toLocaleString('pt-BR')}</strong><small>{sub}</small></div>}
+function Metric({label,value,sub,currency=true,percent=false}:{label:string;value:number;sub:string;currency?:boolean;percent?:boolean}){const display=percent?`${(value*100).toFixed(1).replace('.',',')}%`:currency?brl(value):value.toLocaleString('pt-BR');return <div className="card"><span>{label}</span><strong>{display}</strong><small>{sub}</small></div>}
