@@ -1,5 +1,6 @@
 import {financialCore, openingBalance} from './financial-core'
 import {cashFlowEngine} from './dfc-engine'
+import type { CapexScheduleEntry } from './capex-schedule'
 export type Scenario='base'|'otimista'|'pessimista'
 export type CashForecastRow={month:string;opening:number;inflows:number;operatingOutflows:number;capex:number;financing:number;net:number;closing:number;minimum:number}
 export type WorkingCapitalMetrics={pmr:number;pme:number;pmp:number;cicloFinanceiro:number;necessidadeCapitalGiro:number}
@@ -11,14 +12,15 @@ const factors:Record<Scenario,number>={base:1,otimista:1.08,pessimista:.92}
  * os componentes exibidos são derivados da mesma ponte para que entradas,
  * saídas, CAPEX, financiamentos e variação de caixa permaneçam reconciliados.
  */
-export function buildCashForecast(scenario:Scenario='base',_initialCash=openingBalance.cash):CashForecastRow[]{
+export function buildCashForecast(scenario:Scenario='base',_initialCash=openingBalance.cash,capexSchedule:CapexScheduleEntry[]=[]):CashForecastRow[]{
   let closing=openingBalance.cash
   const f=factors[scenario]
   return financialCore.map((m,i)=>{
     const key=`2026-${String(i+1).padStart(2,'0')}`
     const flow=cashFlowEngine(undefined,{start:key,end:key})
     const operating=flow.operational*f
-    const investment=flow.investment
+    const scheduledCapex=capexSchedule.filter(e=>e.competence===key).reduce((s,e)=>s+Math.abs(e.plannedAmount),0)
+    const investment=capexSchedule.some(e=>e.competence===key)?-scheduledCapex:flow.investment
     const financing=flow.financing
     const inflows=m.cashIn*f
     const operatingOutflows=Math.max(0,inflows-operating)
