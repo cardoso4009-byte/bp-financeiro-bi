@@ -50,7 +50,7 @@ export default function PlanoAcaoGerencialV2(){
       @media(max-width:1050px){.metrics{grid-template-columns:repeat(3,1fr)}.board{grid-template-columns:repeat(2,1fr)}}@media(max-width:650px){main{padding:16px}.top{align-items:flex-start;flex-direction:column}.metrics{grid-template-columns:repeat(2,1fr)}.board{grid-template-columns:1fr}}
     `}</style>
     <div className="wrap">
-      <div className="top"><div><div className="eyebrow">CONTROLADORIA GERENCIAL V2</div><h1>Plano de Ação</h1><p className="subtitle">Acompanhamento das ações originadas pelos alertas de variação.</p></div><a className="back" href="/controladoria-gerencial-v2">← Voltar para Controladoria</a></div>
+      <div className="top"><div><div className="eyebrow">CONTROLADORIA GERENCIAL</div><h1>Plano de Ação</h1><p className="subtitle">Acompanhamento das ações originadas pelos alertas de variação.</p></div><div style={{display:"flex",gap:8,alignItems:"center"}}><a className="back" href="/controladoria-gerencial-v2">+ Criar ação na Controladoria</a><a className="back" href="/controladoria-gerencial-v2">← Voltar para Controladoria</a></div></div>
       <section className="metrics"><Metric label="Total de ações" value={metrics.total}/><Metric label="Abertas" value={metrics.aberta}/><Metric label="Em andamento" value={metrics.em_andamento}/><Metric label="Concluídas" value={metrics.concluida}/><Metric label="Atrasadas" value={metrics.atrasada}/></section>
       <div className="toolbar"><div className="filters">{(['todas','aberta','em_andamento','concluida','cancelada'] as const).map(value=><button key={value} className={filter===value?'active':''} onClick={()=>setFilter(value)}>{value==='todas'?'Todas':statusLabel[value]}</button>)}</div><div className="hint">As alterações são persistidas localmente no navegador.</div></div>
       <section className="board">
@@ -72,7 +72,7 @@ export default function PlanoAcaoGerencialV2(){
           </div>
         })}
       </section>
-      <div className="footer-note">Governança: o plano de ação não cria causas automaticamente. Cada ação permanece vinculada ao alerta que originou a decisão e à sua competência.</div>
+      <div className="footer-note">Governança: o plano de ação não cria causas automaticamente. Cada ação permanece vinculada ao alerta que originou a decisão e à sua competência. Para criar uma nova ação, selecione o alerta na Controladoria Gerencial e registre causa, ação, responsável e prazo.</div>
     </div>
   </main>
 }
