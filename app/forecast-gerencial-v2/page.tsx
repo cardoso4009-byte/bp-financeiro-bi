@@ -14,6 +14,8 @@ import { readV2ForecastEntries, writeV2ForecastEntries } from '@/lib/v2-forecast
 import { readCapexSchedule } from '@/lib/capex-schedule'
 import { readCapexProjects } from '@/lib/capex-storage'
 import { buildCapexForecastEntries } from '@/lib/capex-forecast'
+import { workingCapitalData } from '@/lib/capital-giro-engine'
+import { buildWorkingCapitalForecast } from '@/lib/capital-giro-forecast'
 
 const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0})
 const pct=(n:number|undefined)=>n===undefined?'—':`${(n*100).toFixed(1).replace('.',',')}%`
@@ -60,6 +62,8 @@ export default function ForecastGerencialV2(){
  const opex=report.lines.filter(l=>l.movementClass==='opex').reduce((s,l)=>s+l.forecast,0)
  const custos=report.lines.filter(l=>l.movementClass==='custo').reduce((s,l)=>s+l.forecast,0)
  const resultado=receita+opex+custos+report.lines.filter(l=>l.movementClass==='financeiro'||l.movementClass==='imposto').reduce((s,l)=>s+l.forecast,0)
+ const workingCapitalBase=workingCapitalData.find(row=>row.month===cutoff) ?? workingCapitalData[workingCapitalData.length-1]
+ const workingCapitalForecast=useMemo(()=>buildWorkingCapitalForecast(report.lines,futurePeriods,{pmrDias:workingCapitalBase?.diasReceber ?? 30,pmeDias:workingCapitalBase?.diasEstoque ?? 30,pmpDias:workingCapitalBase?.diasFornecedores ?? 30},workingCapitalBase?.necessidadeCapitalGiro ?? 0),[report.lines,futurePeriods,workingCapitalBase])
  return <main style={{padding:'28px',background:'#f4f7fb',minHeight:'100vh',color:'#17304a'}}>
   <header style={{display:'flex',justifyContent:'space-between',gap:20,alignItems:'center',marginBottom:20}}>
    <div><small style={{letterSpacing:'.12em',fontWeight:800,color:'#52718f'}}>CONTROLADORIA GERENCIAL</small><h1 style={{margin:'6px 0'}}>Forecast Gerencial</h1><p style={{margin:0,color:'#70869c'}}>Orçamento × Realizado × Forecast • visão anual e mensal</p></div>
@@ -83,6 +87,11 @@ export default function ForecastGerencialV2(){
   </section>
   <section style={panel}><div style={title}><h2>Leitura executiva</h2><span>{realized.length} linhas realizadas • {future.length} projetadas</span></div>
    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12}}><Note title="Forecast" text="Meses até a competência de corte permanecem como realizado; meses futuros usam o forecast informado."/><Note title="Governança" text="A projeção futura precisa ter fonte explícita. O sistema não cria causa nem redistribui valores automaticamente."/><Note title="Rastreabilidade" text={`${report.forecastEntries} registros de forecast • ${report.unassignedForecastEntries} sem centro de resultado.`}/></div>
+  </section>
+  <section style={panel}><div style={title}><div><h2>Forecast de Capital de Giro</h2><span>Impacto projetado sobre caixa • premissas explícitas</span></div><span>PMR {Math.round(workingCapitalForecast.assumptions.pmrDias)}d • PME {Math.round(workingCapitalForecast.assumptions.pmeDias)}d • PMP {Math.round(workingCapitalForecast.assumptions.pmpDias)}d</span></div>
+   <div style={{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:12,marginBottom:14}}><Metric label="NCG final projetada" value={workingCapitalForecast.lines.at(-1)?.workingCapitalNeed ?? workingCapitalBase?.necessidadeCapitalGiro ?? 0}/><Metric label="Impacto acumulado no caixa" value={workingCapitalForecast.totalCashImpact}/><Metric label="Recebíveis projetados" value={workingCapitalForecast.lines.reduce((s,l)=>s+l.receivables,0)}/></div>
+   <div style={{overflowX:'auto'}}><table style={table}><thead><tr><th>Competência</th><th>Receita</th><th>Recebíveis</th><th>Estoque</th><th>Fornecedores</th><th>NCG</th><th>Impacto Caixa</th></tr></thead><tbody>{workingCapitalForecast.lines.map(l=><tr key={l.period}><td>{l.period}</td><td>{brl(l.revenue)}</td><td>{brl(l.receivables)}</td><td>{brl(l.inventory)}</td><td>{brl(l.payables)}</td><td>{brl(l.workingCapitalNeed)}</td><td>{brl(l.cashImpact)}</td></tr>)}</tbody></table></div>
+   <div style={{fontSize:12,color:'#60778e',marginTop:12}}>Premissas derivadas da posição de Capital de Giro na competência de corte. Valores positivos em “Impacto Caixa” representam liberação estimada; negativos representam consumo estimado. Esta projeção não altera realizado, contabilidade ou Forecast oficial.</div>
   </section>
   <section style={panel}><div style={title}><h2>Forecast por competência</h2><span>Orçado × Forecast</span></div>
    <div style={{overflowX:'auto'}}><table style={table}><thead><tr><th>Competência</th><th>Status</th><th>Orçado</th><th>Realizado</th><th>Forecast</th><th>Gap</th><th>Gap %</th></tr></thead><tbody>{periods.map(p=>{const lines=report.lines.filter(l=>l.period===p);const b=lines.reduce((s,l)=>s+l.budget,0);const a=lines.reduce((s,l)=>s+l.actual,0);const f=lines.reduce((s,l)=>s+l.forecast,0);const gap=f-b;return <tr key={p}><td>{p}</td><td><Badge text={p<=cutoff?'REALIZADO':'PROJETADO'}/></td><td>{brl(b)}</td><td>{brl(a)}</td><td>{brl(f)}</td><td>{brl(gap)}</td><td>{pct(Math.abs(b)>=.005?gap/Math.abs(b):undefined)}</td></tr>})}</tbody></table></div>
