@@ -11,6 +11,8 @@ import { readV2CostCenters } from '@/lib/v2-cost-center-storage'
 import { readV2ForecastEntries } from '@/lib/v2-forecast-storage'
 import { buildForecastManagementAlerts, type V2ManagementAction, type V2ManagementAlert } from '@/lib/v2-management'
 import { readV2ManagementActions, readV2ManagementAlerts } from '@/lib/v2-management-storage'
+import { readCapexProjects } from '@/lib/capex-storage'
+import { buildCapexReport } from '@/lib/capex'
 
 const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0})
 const pct=(n:number|undefined)=>n===undefined?'—':`${(n*100).toFixed(1).replace('.',',')}%`
@@ -24,6 +26,11 @@ export default function PainelExecutivoForecastV2(){
  const forecast=useMemo<V2ForecastEntry[]>(()=>readV2ForecastEntries(),[])
  const savedAlerts=useMemo<V2ManagementAlert[]>(()=>readV2ManagementAlerts(),[])
  const actions=useMemo<V2ManagementAction[]>(()=>readV2ManagementActions(),[])
+ const capexProjects=useMemo(()=>readCapexProjects(),[])
+ const capex=useMemo(()=>buildCapexReport(capexProjects),[capexProjects])
+ const capexDeviations=capexProjects.filter(p=>p.forecastAmount!==p.approvedBudget).sort((a,b)=>Math.abs(b.forecastAmount-b.approvedBudget)-Math.abs(a.forecastAmount-a.approvedBudget))
+ const capexWithoutAction=capexProjects.filter(p=>p.forecastAmount!==p.approvedBudget&&!p.correctiveAction).length
+ const capexOpenActions=capexProjects.filter(p=>p.forecastAmount!==p.approvedBudget&&p.correctiveAction&&p.actionStatus!=='concluida').length
  const cutoff=competence(period.year,period.month)
  const report=useMemo(()=>buildV2ForecastReport(base,budget,forecast,centers,cutoff,periods),[base,budget,forecast,centers,cutoff])
  const alerts=useMemo(()=>buildForecastManagementAlerts(report.lines).map(a=>{const saved=savedAlerts.find(x=>x.id===a.id);return saved?{...a,causeType:saved.causeType,causeNote:saved.causeNote,actionIds:saved.actionIds,createdAt:saved.createdAt,updatedAt:saved.updatedAt}:a}),[report.lines,savedAlerts])
@@ -48,8 +55,12 @@ export default function PainelExecutivoForecastV2(){
    <Metric label="Receita Forecast" value={receita} sub="Projeção anual"/><Metric label="OPEX Forecast" value={Math.abs(opex)} sub="Despesas operacionais"/><Metric label="Custos Forecast" value={Math.abs(custos)} sub="Custos operacionais"/><Metric label="Resultado Forecast" value={resultado} sub="Resultado projetado"/><Metric label="Gap Orçado × Forecast" value={report.budgetGap} sub="Desvio acumulado"/>
   </section>
   <section className="cards">
+   <Metric label="CAPEX Orçado" value={capex.approvedBudget} sub="Investimentos aprovados"/><Metric label="CAPEX Forecast" value={capex.forecastAmount} sub="Projeção dos projetos"/><Metric label="Desvio CAPEX" value={capex.forecastVariance} sub="Forecast × orçamento"/><Metric label="Projetos CAPEX em desvio" value={capexDeviations.length} currency={false} sub="Exigem análise"/><Metric label="CAPEX sem ação" value={capexWithoutAction} currency={false} sub="Governança pendente"/>
+  </section>
+  <section className="cards">
    <Metric label="Forecast × Realizado" value={report.forecastGap} sub="Diferença no período de corte"/><Metric label="Alertas críticos" value={critical.length} currency={false} sub="Projeções acima do limite"/><Metric label="Alertas em atenção" value={attention.length} currency={false} sub="Monitoramento"/><Metric label="Ações abertas" value={openActions.length} currency={false} sub="Em acompanhamento"/><Metric label="Impacto dos alertas com ação" value={impactWithAction} sub="Valor dos desvios vinculados"/>
   </section>
+  <section className="panel wide"><div className="panel-title"><h2>Governança CAPEX</h2><span>{capexDeviations.length} projeto(s) em desvio</span></div>{capexDeviations.length?<div className="critical-list">{capexDeviations.slice(0,6).map(p=><div className="critical-item" key={p.id}><b>{p.code} • {p.name}</b><small>Desvio {brl(p.forecastAmount-p.approvedBudget)} • {p.deviationCause?'Causa registrada':'Sem causa'} • {p.correctiveAction?'Ação registrada':'Sem ação'}{p.actionOwner?' • '+p.actionOwner:''}{p.actionDueDate?' • prazo '+p.actionDueDate:''}</small></div>)}</div>:<div className="note">Nenhum projeto CAPEX com desvio.</div>}<div className="note" style={{marginTop:10}}>O painel consolida os desvios registrados no CAPEX. Causa, ação, responsável e prazo são definidos pelo gestor.</div></section>
   <section className="grid">
    <div className="panel"><div className="panel-title"><h2>Visão mensal</h2><span>Orçado × Realizado × Forecast • corte {cutoff}</span></div>
     <div className="bars">{byPeriod.map(x=>{const max=Math.max(...byPeriod.map(y=>Math.abs(y.forecast)),1);const h=Math.max(3,Math.round(Math.abs(x.forecast)/max*135));return <div className="barcol" key={x.period}><div className="bar forecast" style={{height:h}} title={`Forecast ${brl(x.forecast)}`}/><div className="bar actual" style={{height:Math.max(2,Math.round(Math.abs(x.actual)/max*30))}} title={`Realizado ${brl(x.actual)}`}/><div className="bar-label">{x.period.slice(5)}</div></div>})}</div>
@@ -64,7 +75,7 @@ export default function PainelExecutivoForecastV2(){
   </section>
   <section className="grid">
    <div className="panel"><div className="panel-title"><h2>Ações em acompanhamento</h2><span>{openActions.length} abertas</span></div>{openActions.slice(0,8).map(a=><div className="action" key={a.id}><b>{a.description}</b><small>{a.owner??'Sem responsável'} • {a.dueDate??'Sem prazo'} • {a.status}</small></div>)}{!openActions.length&&<div className="note">Nenhuma ação aberta.</div>}</div>
-   <div className="panel"><div className="panel-title"><h2>Governança do Forecast</h2><span>V2</span></div><div className="note">O Forecast futuro depende de fonte explícita. O sistema não faz rateio automático nem infere causas. Alertas permanecem rastreáveis por competência, centro de resultado e classe financeira.</div><div style={{marginTop:10}} className="note">{report.forecastEntries} registros de forecast • {report.unassignedForecastEntries} sem centro de resultado.</div></div>
+   <div className="panel"><div className="panel-title"><h2>Governança do Forecast</h2><span>Controle gerencial</span></div><div className="note">O Forecast futuro depende de fonte explícita. O sistema não faz rateio automático nem infere causas. Alertas permanecem rastreáveis por competência, centro de resultado e classe financeira.</div><div style={{marginTop:10}} className="note">{report.forecastEntries} registros de forecast • {report.unassignedForecastEntries} sem centro de resultado.</div></div>
   </section>
  </main>
 }
