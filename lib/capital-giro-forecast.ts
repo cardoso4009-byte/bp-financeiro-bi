@@ -42,7 +42,7 @@ export function buildWorkingCapitalForecast(
       .reduce((sum, line) => sum + Math.abs(line.forecast), 0) * assumptions.pmeDias / 30
     const payables = operatingCost * assumptions.pmpDias / 30
     const workingCapitalNeed = receivables + inventory - payables
-    const previous = projected[futurePeriods.indexOf(period) - 1]?.workingCapitalNeed ?? 0
+    const previous = projected[futurePeriods.indexOf(period) - 1]?.workingCapitalNeed ?? initialWorkingCapitalNeed
     const cashImpact = previous - workingCapitalNeed
 
     return {
