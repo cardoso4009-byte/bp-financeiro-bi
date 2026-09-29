@@ -31,7 +31,6 @@ export default function ForecastGerencialV2(){
  const base=useMemo(()=>buildV2FinancialBase(readV2BrowserStore().entries),[])
  const budget=useMemo(()=>readV2BudgetEntries(),[])
  const capexCash=useMemo(()=>buildCapexCashReport(capexProjects,capexSchedule,period.year),[capexProjects,capexSchedule,period.year])
- const capexFutureEntries=useMemo(()=>buildCapexForecastEntries(capexSchedule,baseCompanyId(base.entries),cutoff),[capexSchedule,base.entries,cutoff])
  
  const centers=useMemo(()=>readV2CostCenters(),[])
  const futurePeriods=periods.filter(p=>p>cutoff)
