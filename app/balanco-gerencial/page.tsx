@@ -130,7 +130,19 @@ export default function BalancoGerencial(){
    <div className="bp-checks"><Check ok={Math.abs(patrimonioCheck)<1} label="Ativo = Passivo + PL" value={Math.abs(patrimonioCheck)<1?'Estrutura patrimonial conciliada':`Diferença: ${brl(patrimonioCheck)}`}/><Check ok={Number.isFinite(capitalGiro)} label="Capital de Giro Líquido" value={prev&&prevCapitalGiro!==null?`${brl(capitalGiro)} • variação vs. ${previousLabel}: ${pct(variance(capitalGiro,prevCapitalGiro))}`:`${brl(capitalGiro)} • sem competência anterior disponível para comparação`}/></div>
   </>}
   {period.view==='comparativo'&&<section className="bp-card"><div className="bp-card-title"><div><small>ANÁLISE COMPARATIVA</small><h2>{monthLabel(period.month)}/{period.year} × {previousLabel}</h2></div><span>Período anterior</span></div>{prev?<div className="bp-grid">{[['Ativo Total',m.ativoTotal,prev.ativoTotal],['Passivo Total',m.passivoTotal,prev.passivoTotal],['Patrimônio Líquido',m.pl,prev.pl],['Capital de Giro Líquido',capitalGiro,prevCapitalGiro!]].map(([label,value,previous])=><div className="metric-card" key={label as string}><span>{label}</span><h2>{brl(value as number)}</h2><small>Anterior: {brl(previous as number)} • variação: {variance(value as number,previous as number)>=0?'+':''}{pct(variance(value as number,previous as number))}</small></div>)}</div>:<div className="note">Não há competência anterior disponível para comparação.</div>}</section>}
-  {mode==='indicadores'&&<div className="indicator-grid">{rows.map(([label,value])=><div className="metric-card" key={label as string}><span>{label}</span><h2>{label==='Liquidez Corrente'?(value as number).toFixed(2):pct(value as number)}</h2><small>{viewLabel} • {monthLabel(period.month)}/{period.year}</small></div>)}<div className="metric-card"><span>Capital de Giro Líquido</span><h2>{brl(capitalGiro)}</h2><small>Ativo Circulante − Passivo Circulante</small></div></div>}
+  {mode==='indicadores'&&<>
+   <div className="indicator-grid">{rows.map(([label,value])=><div className="metric-card" key={label as string}><span>{label}</span><h2>{label==='Liquidez Corrente'?(value as number).toFixed(2):pct(value as number)}</h2><small>{viewLabel} • {monthLabel(period.month)}/{period.year}</small></div>)}<div className="metric-card"><span>Capital de Giro Líquido</span><h2>{brl(capitalGiro)}</h2><small>Ativo Circulante − Passivo Circulante</small></div></div>
+   <section className="bp-card" style={{marginTop:24}}>
+    <div className="bp-card-title"><div><small>INDICADORES DE INVESTIMENTO</small><h2>Eficiência e pressão do CAPEX</h2><p className="muted">Indicadores auxiliares para decisão gerencial, sem alterar os saldos contábeis.</p></div><span>{monthLabel(period.month)}/{period.year}</span></div>
+    <div className="bp-grid">
+     <div className="metric-card"><span>CAPEX contratado / orçamento</span><h2>{pct(capexReport.approvedBudget>0?capexReport.contractedAmount/capexReport.approvedBudget:0)}</h2><small>{brl(capexReport.contractedAmount)} contratado</small></div>
+     <div className="metric-card"><span>CAPEX realizado / contratado</span><h2>{pct(capexReport.contractedAmount>0?capexReport.realizedAmount/capexReport.contractedAmount:0)}</h2><small>{brl(capexReport.realizedAmount)} realizado</small></div>
+     <div className="metric-card"><span>Saldo futuro do Forecast</span><h2>{brl(capexOpenBalance)}</h2><small>Forecast − realizado</small></div>
+     <div className="metric-card"><span>Desvio Forecast / orçamento</span><h2>{pct(capexReport.approvedBudget>0?capexReport.forecastVariance/capexReport.approvedBudget:0)}</h2><small>{brl(capexReport.forecastVariance)} de diferença</small></div>
+    </div>
+    <div className="note" style={{marginTop:20}}>O indicador de pressão de caixa vem do Forecast CAPEX. O efeito patrimonial somente deve ser reconhecido quando existir lançamento contábil correspondente.</div>
+   </section>
+  </>}
   <div className="report-period-context"><strong>{viewLabel}</strong><span>Data-base: {monthLabel(period.month)}/{period.year}</span></div>
  </div></main>
 }
