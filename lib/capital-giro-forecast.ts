@@ -28,7 +28,8 @@ export function buildWorkingCapitalForecast(
   futurePeriods: string[],
   assumptions: WorkingCapitalForecastAssumptions,
 ): WorkingCapitalForecastReport {
-  const projected = futurePeriods.map(period => {
+  const projected: WorkingCapitalForecastLine[] = []
+  for (const period of futurePeriods) {
     const periodLines = lines.filter(line => line.period === period && line.status === 'projetado')
     const revenue = periodLines
       .filter(line => line.movementClass === 'receita')
@@ -42,10 +43,10 @@ export function buildWorkingCapitalForecast(
       .reduce((sum, line) => sum + Math.abs(line.forecast), 0) * assumptions.pmeDias / 30
     const payables = operatingCost * assumptions.pmpDias / 30
     const workingCapitalNeed = receivables + inventory - payables
-    const previous = projected[futurePeriods.indexOf(period) - 1]?.workingCapitalNeed ?? initialWorkingCapitalNeed
+    const previous = projected.at(-1)?.workingCapitalNeed ?? initialWorkingCapitalNeed
     const cashImpact = previous - workingCapitalNeed
 
-    return {
+    projected.push({
       period,
       revenue,
       operatingCost,
@@ -54,8 +55,8 @@ export function buildWorkingCapitalForecast(
       payables,
       workingCapitalNeed,
       cashImpact,
-    }
-  })
+    })
+  }
 
   return {
     assumptions,
