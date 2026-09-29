@@ -71,7 +71,7 @@ export default function CapexCronograma(){
   <section className="bp-card"><div className="bp-card-title"><div><small>PROGRAMAÇÃO MENSAL</small><h2>Desembolsos previstos</h2><p className="bp-muted">Os valores são consolidados por competência e não são rateados automaticamente.</p></div><span>{entries.length} lançamento(s)</span></div>
    <div className="table-wrap"><table><thead><tr><th>Projeto</th>{months.map(m=><th key={m}>{label(m)}</th>)}<th>Total</th></tr></thead><tbody>
     {projects.map(p=>{const row=months.map(m=>entries.filter(e=>e.projectId===p.id&&e.competence===m).reduce((s,e)=>s+e.plannedAmount,0));return <tr key={p.id}><td><b>{p.code}</b><br/><span className="bp-muted">{p.name}</span></td>{row.map((v,i)=><td key={months[i]}>{brl(v)}</td>)}<td><b>{brl(row.reduce((a,b)=>a+b,0))}</b></td></tr>})}
-   </tbody><tfoot><tr><th>Total</th>{totals.map((v,i)=><th key={months[i]}>{brl(v)}</th>)}<th>{brl(total)}</th></tr></table></div>
+   </tbody><tfoot><tr><th>Total</th>{totals.map((v,i)=><th key={months[i]}>{brl(v)}</th>)}<th>{brl(total)}</th></tr></tfoot></table></div>
   </section>
 
   {editing&&<section className="bp-card" style={{marginTop:16}}><div className="bp-card-title"><div><small>LANÇAMENTOS DETALHADOS</small><h2>Datas e desembolsos</h2><p className="bp-muted">Cada desembolso possui data própria e sua competência acompanha a data.</p></div></div>
