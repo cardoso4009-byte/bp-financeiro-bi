@@ -2,7 +2,7 @@ import type { CostCenter, MovementClass } from './v2-data-model'
 import type { V2FinancialBase, V2BaseRecord } from './v2-financial-base'
 import type { V2BudgetEntry } from './v2-budget'
 
-export type ForecastSource = 'manual' | 'budget' | 'run_rate'
+export type ForecastSource = 'manual' | 'budget' | 'run_rate' | 'capex'
 export type ForecastStatus = 'realizado' | 'projetado'
 
 export interface V2ForecastEntry {
