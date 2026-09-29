@@ -11,6 +11,9 @@ import { readV2BrowserStore } from '@/lib/v2-browser-storage'
 import { readV2BudgetEntries } from '@/lib/v2-budget-storage'
 import { readV2CostCenters } from '@/lib/v2-cost-center-storage'
 import { readV2ForecastEntries, writeV2ForecastEntries } from '@/lib/v2-forecast-storage'
+import { readCapexSchedule } from '@/lib/capex-schedule'
+import { readCapexProjects } from '@/lib/capex-storage'
+import { buildCapexForecastEntries } from '@/lib/capex-forecast'
 
 const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0})
 const pct=(n:number|undefined)=>n===undefined?'—':`${(n*100).toFixed(1).replace('.',',')}%`
@@ -21,6 +24,7 @@ export default function ForecastGerencialV2(){
  const [forecast,setForecast]=useState<V2ForecastEntry[]>([])
  const [source,setSource]=useState<'budget'|'run_rate'>('budget')
  const [message,setMessage]=useState('')
+ const [capexMessage,setCapexMessage]=useState('')
  useEffect(()=>{setForecast(readV2ForecastEntries())},[])
  const cutoff=competence(period.year,period.month)
  const base=useMemo(()=>buildV2FinancialBase(readV2BrowserStore().entries),[])
@@ -30,6 +34,16 @@ export default function ForecastGerencialV2(){
  const futurePeriods=periods.filter(p=>p>cutoff)
  const lookbackPeriods=periods.filter(p=>p<=cutoff).slice(-3)
  const report=useMemo(()=>buildV2ForecastReport(base,budget,forecast,centers,cutoff,periods),[base,budget,forecast,centers,cutoff])
+ const integrateCapex=()=>{
+   const schedule=readCapexSchedule()
+   const projects=readCapexProjects()
+   const generated=buildCapexForecastEntries(schedule,projects,{companyId:base.entries[0]?.companyId ?? 'empresa',cutoffPeriod:cutoff})
+   const preserved=forecast.filter(entry=>entry.period<=cutoff || entry.source!=='capex')
+   const next=[...preserved,...generated]
+   writeV2ForecastEntries(next)
+   setForecast(next)
+   setCapexMessage(`${generated.length} projeções CAPEX integradas ao forecast.`)
+ }
  const generateForecast=()=>{
    const generated=source==='budget'
      ? buildBudgetForecastEntries(budget,{companyId:base.entries[0]?.companyId ?? 'empresa',cutoffPeriod:cutoff,futurePeriods})
@@ -60,7 +74,7 @@ export default function ForecastGerencialV2(){
   <section style={panel}><div style={title}><h2>Motor de projeção</h2><span>Fonte explícita • sem rateio automático</span></div>
    <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
     <select value={source} onChange={e=>setSource(e.target.value as 'budget'|'run_rate')} style={input}><option value="budget">Orçamento</option><option value="run_rate">Run rate — média dos últimos 3 meses</option></select>
-    <button onClick={generateForecast} style={button}>Gerar forecast</button>
+    <button onClick={generateForecast} style={button}>Gerar forecast</button>\n    <button onClick={integrateCapex} style={{...button,background:'#286b4f'}}>Integrar CAPEX ao forecast</button>\n    {capexMessage && <span style={{fontSize:12,color:'#52718f'}}>{capexMessage}</span>
     {message && <span style={{fontSize:12,color:'#52718f'}}>{message}</span>}
    </div>
    <p style={{fontSize:12,color:'#60778e',marginBottom:0}}>Período de corte: {cutoff}. As competências futuras {futurePeriods.join(', ') || '—'} serão recalculadas pela fonte escolhida. O histórico realizado é preservado.</p>
