@@ -76,7 +76,7 @@ export default function ForecastGerencialV2(){
     <select value={source} onChange={e=>setSource(e.target.value as 'budget'|'run_rate')} style={input}><option value="budget">Orçamento</option><option value="run_rate">Run rate — média dos últimos 3 meses</option></select>
     <button onClick={generateForecast} style={button}>Gerar forecast</button>
     <button onClick={integrateCapex} style={{...button,background:'#286b4f'}}>Integrar CAPEX ao forecast</button>
-    {capexMessage && <span style={{fontSize:12,color:'#52718f'}}>{capexMessage}</span>
+    {capexMessage && <span style={{fontSize:12,color:'#52718f'}}>{capexMessage}</span>}
     {message && <span style={{fontSize:12,color:'#52718f'}}>{message}</span>}
    </div>
    <p style={{fontSize:12,color:'#60778e',marginBottom:0}}>Período de corte: {cutoff}. As competências futuras {futurePeriods.join(', ') || '—'} serão recalculadas pela fonte escolhida. O histórico realizado é preservado.</p>
