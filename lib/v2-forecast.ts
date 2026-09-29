@@ -165,7 +165,7 @@ export function validateV2ForecastEntries(entries: V2ForecastEntry[]): string[] 
     if(!/^\d{4}-\d{2}$/.test(entry.period)) errors.push(`Competência inválida: ${entry.period}`)
     if(!Number.isFinite(entry.amount)) errors.push(`Valor inválido: ${entry.id}`)
     if(!entry.companyId) errors.push(`Empresa ausente: ${entry.id}`)
-    if(!['manual','budget','run_rate'].includes(entry.source)) errors.push(`Fonte de forecast inválida: ${entry.id}`)
+    if(!['manual','budget','run_rate','capex'].includes(entry.source)) errors.push(`Fonte de forecast inválida: ${entry.id}`)
   }
   return errors
 }
