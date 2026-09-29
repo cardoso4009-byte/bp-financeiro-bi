@@ -21,6 +21,9 @@ export interface CapexProject {
   status: CapexStatus
   deviationCause?: string
   correctiveAction?: string
+  actionOwner?: string
+  actionDueDate?: string
+  actionStatus?: 'aberta' | 'em_andamento' | 'concluida'
   description?: string
 }
 
