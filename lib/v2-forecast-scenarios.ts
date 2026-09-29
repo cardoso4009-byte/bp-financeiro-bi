@@ -20,6 +20,7 @@ export interface ForecastScenarioResult {
   scenario: ForecastScenarioDefinition
   revenue: number
   expenses: number
+  capex: number
   result: number
   deltaToBase: number
 }
@@ -34,7 +35,8 @@ export function buildForecastScenario(lines: V2ForecastLine[], scenarioId: Forec
   const scenario = FORECAST_SCENARIOS.find(item=>item.id===scenarioId) ?? FORECAST_SCENARIOS[0]
   const revenue = lines.reduce((sum,line)=>sum+(line.movementClass==='receita'?line.forecast*factorForClass(line,scenario):0),0)
   const expenses = lines.reduce((sum,line)=>sum+(line.movementClass!=='receita'?line.forecast*factorForClass(line,scenario):0),0)
+  const capex = lines.reduce((sum,line)=>sum+(line.movementClass==='capex'?line.forecast*factorForClass(line,scenario):0),0)
   const result = revenue + expenses
   const base = scenarioId==='base' ? result : buildForecastScenario(lines,'base').result
-  return {scenario,revenue,expenses,result,deltaToBase:result-base}
+  return {scenario,revenue,expenses,capex,result,deltaToBase:result-base}
 }
