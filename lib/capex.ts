@@ -1,5 +1,3 @@
-import type { CostCenter } from './v2-data-model'
-
 export type CapexStatus = 'planejado' | 'aprovado' | 'contratado' | 'em_execucao' | 'realizado' | 'cancelado'
 export type CapexCategory = 'expansao' | 'manutencao' | 'tecnologia' | 'infraestrutura' | 'equipamentos' | 'outros'
 
