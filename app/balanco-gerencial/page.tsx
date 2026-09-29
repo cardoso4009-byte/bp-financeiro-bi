@@ -9,6 +9,8 @@ import {buildV2Bp} from '@/lib/v2-bp'
 import type {Account} from '@/lib/v2-data-model'
 import {readV2BrowserStore} from '@/lib/v2-browser-storage'
 import {readV2Accounts, writeV2Accounts} from '@/lib/v2-account-storage'
+import {buildCapexReport} from '@/lib/capex'
+import {readCapexProjects} from '@/lib/capex-storage'
 
 const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0})
 const pct=(n:number)=>`${(n*100).toFixed(1).replace('.',',')}%`
@@ -36,6 +38,7 @@ export default function BalancoGerencial(){
  const[v2Entries,setV2Entries]=useState<ReturnType<typeof readV2BrowserStore>['entries']>([])
  const[accountDrafts,setAccountDrafts]=useState<Record<string,AccountDraft>>({})
  const[accountsSaved,setAccountsSaved]=useState(false)
+ const[capexProjects,setCapexProjects]=useState<ReturnType<typeof readCapexProjects>>([])
  useEffect(()=>{
   const store=readV2BrowserStore()
   const entries=store.entries
@@ -52,6 +55,7 @@ export default function BalancoGerencial(){
   })
   setAccountDrafts(drafts)
   setAccountsSaved(saved.length>0)
+  setCapexProjects(readCapexProjects())
  },[])
  const baseIndex=Math.min(Math.max(period.month-1,0),Math.max(months.length-1,0))
  const m=monthlyBalance[baseIndex] ?? monthlyBalance[0]
@@ -72,6 +76,11 @@ export default function BalancoGerencial(){
  const v2Ready=v2Entries.length>0 && draftRows.length>0 && draftRows.every(([,draft])=>Boolean(draft.nature&&draft.statement&&draft.companyId))
  const v2Accounts=useMemo<Account[]>(()=>draftRows.map(([id,draft])=>({id,companyId:draft.companyId,code:draft.code||id,name:draft.name||id,nature:draft.nature as Account['nature'],statement:draft.statement as Account['statement'],active:true})),[accountDrafts])
  const v2Report=v2Ready?buildV2Bp(v2Base,v2Accounts,selectedV2Period):null
+ const capexReport=useMemo(()=>buildCapexReport(capexProjects),[capexProjects])
+ const capexExecution=capexReport.approvedBudget>0?capexReport.realizedAmount/capexReport.approvedBudget:0
+ const capexForecastExecution=capexReport.approvedBudget>0?capexReport.forecastAmount/capexReport.approvedBudget:0
+ const capexForecastGap=capexReport.forecastVariance
+ const capexOpenBalance=Math.max(capexReport.forecastAmount-capexReport.realizedAmount,0)
  function updateDraft(id:string,field:'nature'|'statement',value:string){
   setAccountDrafts(current=>({...current,[id]:{...current[id],[field]:value} as AccountDraft}))
   setAccountsSaved(false)
@@ -96,6 +105,18 @@ export default function BalancoGerencial(){
       <div className="table-wrap" style={{marginTop:20}}><table><thead><tr><th>Conta</th><th>Grupo</th><th>Lançamentos</th><th>Saldo</th></tr></thead><tbody>{v2Report.accounts.map(account=><tr key={account.accountId}><td>{account.name}<small style={{display:'block'}}>{account.code}</small></td><td>{account.statement==='ativo'?'Ativo':account.statement==='passivo'?'Passivo':account.statement==='patrimonio_liquido'?'Patrimônio Líquido':'Resultado'}</td><td>{account.entries}</td><td className="amount">{brl(account.balance)}</td></tr>)}</tbody></table></div>
      </> : <div className="note" style={{marginTop:16}}>Classifique natureza e grupo patrimonial de todas as contas para calcular o BP. A regra é deliberadamente conservadora: o sistema não inventa classificações.</div>}
    </>}
+  </section>
+
+  <section className="bp-card" style={{marginBottom:24}}>
+   <div className="bp-card-title"><div><small>GESTÃO DE INVESTIMENTOS</small><h2>CAPEX e posição patrimonial</h2><p className="muted">Ponte gerencial entre investimentos, orçamento e patrimônio • não altera o BP contábil oficial</p></div><span>{monthLabel(period.month)}/{period.year}</span></div>
+   <div className="bp-summary"><div><span>CAPEX Orçado</span><strong>{brl(capexReport.approvedBudget)}</strong></div><div><span>CAPEX Realizado</span><strong>{brl(capexReport.realizedAmount)}</strong></div><div><span>CAPEX Forecast</span><strong>{brl(capexReport.forecastAmount)}</strong></div><div><span>Saldo a realizar</span><strong>{brl(capexOpenBalance)}</strong></div></div>
+   <div className="bp-grid" style={{marginTop:20}}>
+    <div className="metric-card"><span>Execução do orçamento</span><h2>{pct(capexExecution)}</h2><small>Realizado ÷ orçamento CAPEX</small></div>
+    <div className="metric-card"><span>Forecast × orçamento</span><h2>{pct(capexForecastExecution)}</h2><small>Forecast ÷ orçamento CAPEX</small></div>
+    <div className="metric-card"><span>Desvio Forecast</span><h2>{brl(capexForecastGap)}</h2><small>{capexForecastGap>0?'Acima do orçamento':capexForecastGap<0?'Abaixo do orçamento':'Em linha com o orçamento'}</small></div>
+    <div className="metric-card"><span>Projetos em gestão</span><h2>{capexReport.projectCount}</h2><small>Carteira CAPEX cadastrada</small></div>
+   </div>
+   <div className="note" style={{marginTop:20}}>Esta leitura é gerencial. O CAPEX não é lançado automaticamente no Ativo, no Imobilizado ou no Patrimônio Líquido; qualquer efeito contábil depende da classificação e dos lançamentos da base financeira.</div>
   </section>
 
   <div className="bp-tabs">{(['estrutura','indicadores'] as const).map(x=><button key={x} className={mode===x?'active':''} onClick={()=>setMode(x)}>{x[0].toUpperCase()+x.slice(1)}</button>)}</div>
