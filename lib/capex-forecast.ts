@@ -1,6 +1,8 @@
 import type { V2ForecastEntry } from './v2-forecast'
 import type { CapexScheduleEntry } from './capex-schedule'
 import type { CapexProject } from './capex'
+import type { MovementClass } from './v2-data-model'
+import type { ForecastSource } from './v2-forecast'
 
 export function buildCapexForecastEntries(
   schedule: CapexScheduleEntry[],
@@ -14,9 +16,9 @@ export function buildCapexForecastEntries(
       id: `capex-forecast-${item.id}`,
       companyId: options.companyId,
       period: item.competence,
-      movementClass: 'capex',
+      movementClass: 'capex' as MovementClass,
       amount: item.plannedAmount,
-      source: 'capex',
+      source: 'capex' as ForecastSource,
       description: `CAPEX programado • ${validProjects.get(item.projectId)?.code ?? item.projectId}`,
     }))
 }
