@@ -1,6 +1,6 @@
 import {financialCore, openingBalance} from './financial-core'
 import {cashFlowEngine} from './dfc-engine'
-import type { CapexScheduleEntry } from './capex-schedule'
+type CapexScheduleEntry = { competence:string; plannedAmount:number }
 export type Scenario='base'|'otimista'|'pessimista'
 export type CashForecastRow={month:string;opening:number;inflows:number;operatingOutflows:number;capex:number;financing:number;net:number;closing:number;minimum:number}
 export type WorkingCapitalMetrics={pmr:number;pme:number;pmp:number;cicloFinanceiro:number;necessidadeCapitalGiro:number}
