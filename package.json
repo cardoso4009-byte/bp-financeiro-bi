@@ -23,7 +23,8 @@
     "v2:management:gate": "tsx lib/v2-management-gate.ts",
     "v2:forecast:gate": "tsx scripts/v2-forecast-gate.ts",
     "v2:forecast:scenario:gate": "tsx scripts/v2-forecast-scenario-gate.ts",
-    "v2:final:integration:gate": "tsx scripts/v2-final-integration-gate.ts"
+    "v2:final:integration:gate": "tsx scripts/v2-final-integration-gate.ts",
+    "dependency:lock:gate": "tsx scripts/dependency-lock-gate.ts"
   },
   "dependencies": {
     "next": "15.5.26",
