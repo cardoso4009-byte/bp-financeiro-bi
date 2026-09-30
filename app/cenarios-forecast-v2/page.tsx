@@ -28,7 +28,7 @@ export default function CenariosForecastV2(){
  const report=useMemo(()=>buildV2ForecastReport(base,budget,forecast,centers,cutoff,periods),[base,budget,forecast,centers,cutoff])
  const result=useMemo(()=>buildForecastScenario(report.lines,scenario),[report.lines,scenario])
  const capexSchedule=useMemo(()=>readCapexSchedule(),[])
- const capexByScenario=useMemo(()=>FORECAST_SCENARIOS.map(s=>{const x=buildForecastScenario(report.lines,s.id);const capex=report.lines.filter(l=>l.movementClass==='capex'&&l.status==='projetado').reduce((sum,l)=>sum+l.forecast,0)*s.expenseFactor;return {id:s.id,label:s.label,capex,result:x.result,delta:x.deltaToBase}}),[report.lines])
+ const capexByScenario=useMemo(()=>FORECAST_SCENARIOS.map(s=>{const x=buildForecastScenario(report.lines,s.id);const capex=capexSchedule.filter(entry=>entry.competence>cutoff).reduce((sum,entry)=>sum+Math.abs(entry.plannedAmount),0)*s.expenseFactor;return {id:s.id,label:s.label,capex,result:x.result,delta:x.deltaToBase}}),[report.lines,capexSchedule,cutoff])
  const selectedCapex=capexByScenario.find(x=>x.id===scenario) ?? capexByScenario[0]
  const futurePeriods=periods.filter(p=>p>cutoff)
  const workingCapitalBase=workingCapitalData.find(row=>row.month===cutoff) ?? workingCapitalData[workingCapitalData.length-1]
