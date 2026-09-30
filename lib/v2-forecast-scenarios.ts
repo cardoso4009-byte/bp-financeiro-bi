@@ -16,6 +16,8 @@ export const FORECAST_SCENARIOS: ForecastScenarioDefinition[] = [
   { id:'agressivo', label:'Agressivo', description:'Aplica aumento de 5% na receita e redução de 3% nos gastos.', revenueFactor:1.05, expenseFactor:0.97 },
 ]
 
+export interface WorkingCapitalScenarioInput { pmrDias: number; pmeDias: number; pmpDias: number; receitaMensal: number; custoMensal: number }
+
 export interface ForecastScenarioResult {
   scenario: ForecastScenarioDefinition
   revenue: number
@@ -23,6 +25,8 @@ export interface ForecastScenarioResult {
   capex: number
   result: number
   deltaToBase: number
+  workingCapitalCashImpact: number
+  cycleFinanceiro: number
 }
 
 function factorForClass(line: V2ForecastLine, scenario: ForecastScenarioDefinition): number {
@@ -31,12 +35,21 @@ function factorForClass(line: V2ForecastLine, scenario: ForecastScenarioDefiniti
   return 1
 }
 
-export function buildForecastScenario(lines: V2ForecastLine[], scenarioId: ForecastScenario): ForecastScenarioResult {
+export function buildForecastScenario(lines: V2ForecastLine[], scenarioId: ForecastScenario, workingCapital?: WorkingCapitalScenarioInput): ForecastScenarioResult {
   const scenario = FORECAST_SCENARIOS.find(item=>item.id===scenarioId) ?? FORECAST_SCENARIOS[0]
   const revenue = lines.reduce((sum,line)=>sum+(line.movementClass==='receita'?line.forecast*factorForClass(line,scenario):0),0)
   const expenses = lines.reduce((sum,line)=>sum+(line.movementClass!=='receita'?line.forecast*factorForClass(line,scenario):0),0)
   const capex = lines.reduce((sum,line)=>sum+(line.movementClass==='capex'?line.forecast*factorForClass(line,scenario):0),0)
   const result = revenue + expenses
-  const base = scenarioId==='base' ? result : buildForecastScenario(lines,'base').result
-  return {scenario,revenue,expenses,capex,result,deltaToBase:result-base}
+  const base = scenarioId==='base' ? result : buildForecastScenario(lines,'base',workingCapital).result
+  const wc = workingCapital ? calculateWorkingCapitalScenario(workingCapital, scenario.revenueFactor, scenario.expenseFactor) : { cashImpact: 0, cycle: 0 }
+  return {scenario,revenue,expenses,capex,result,deltaToBase:result-base,workingCapitalCashImpact:wc.cashImpact,cycleFinanceiro:wc.cycle}
+}
+
+function calculateWorkingCapitalScenario(input: WorkingCapitalScenarioInput, revenueFactor: number, expenseFactor: number) {
+  const receita = input.receitaMensal * revenueFactor
+  const custo = input.custoMensal * expenseFactor
+  const current = receita * input.pmrDias / 30 + custo * input.pmeDias / 30 - custo * input.pmpDias / 30
+  const baseline = receita * 30 / 30 + custo * 30 / 30 - custo * 30 / 30
+  return { cashImpact: baseline - current, cycle: input.pmrDias + input.pmeDias - input.pmpDias }
 }
