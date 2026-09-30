@@ -26,7 +26,7 @@
     "v2:final:integration:gate": "tsx scripts/v2-final-integration-gate.ts"
   },
   "dependencies": {
-    "next": "15.5.25",
+    "next": "15.5.26",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
