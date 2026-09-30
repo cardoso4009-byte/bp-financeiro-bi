@@ -38,8 +38,8 @@ export function verifySession(token?: string | null): SessionPayload | null {
   if (!encoded || !signature) return null
 
   const expected = sign(encoded)
-  const actualBuffer = Buffer.from(signature)
-  const expectedBuffer = Buffer.from(expected)
+  const actualBuffer = new Uint8Array(Buffer.from(signature))
+  const expectedBuffer = new Uint8Array(Buffer.from(expected))
   if (actualBuffer.length !== expectedBuffer.length) return null
   if (!timingSafeEqual(actualBuffer, expectedBuffer)) return null
 
