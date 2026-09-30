@@ -52,5 +52,7 @@ jobs:
         run: npm run v2:forecast:gate
       - name: V2 Forecast Scenario Gate
         run: npm run v2:forecast:scenario:gate
+      - name: V2 Final Integration Gate
+        run: npm run v2:final:integration:gate
       - name: Build application
         run: npm run build
