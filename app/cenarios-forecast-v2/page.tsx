@@ -25,9 +25,10 @@ export default function CenariosForecastV2(){
  const forecast=useMemo(()=>readV2ForecastEntries(),[])
  const cutoff=competence(period.year,period.month)
  const report=useMemo(()=>buildV2ForecastReport(base,budget,forecast,centers,cutoff,periods),[base,budget,forecast,centers,cutoff])
- const result=useMemo(()=>buildForecastScenario(report.lines,scenario),[report.lines,scenario])
- const baseResult=useMemo(()=>buildForecastScenario(report.lines,'base'),[report.lines])
- const capexByScenario=useMemo(()=>FORECAST_SCENARIOS.map(s=>{const x=buildForecastScenario(report.lines,s.id);const capex=report.lines.filter(l=>l.movementClass==='capex'&&l.status==='projetado').reduce((sum,l)=>sum+l.forecast,0)*s.expenseFactor;return {id:s.id,label:s.label,capex,result:x.result,delta:x.deltaToBase}}),[report.lines])
+ const wcInput=useMemo(()=>({pmrDias:workingCapitalBase?.diasReceber ?? 30,pmeDias:workingCapitalBase?.diasEstoque ?? 30,pmpDias:workingCapitalBase?.diasFornecedores ?? 30,receitaMensal:workingCapitalBase ? workingCapitalBase.contasReceber / Math.max(workingCapitalBase.diasReceber,1) * 30 : 63000,custoMensal:workingCapitalBase ? workingCapitalBase.estoques / Math.max(workingCapitalBase.diasEstoque,1) * 30 : 31500}),[workingCapitalBase])
+ const result=useMemo(()=>buildForecastScenario(report.lines,scenario,wcInput),[report.lines,scenario,wcInput])
+ const baseResult=useMemo(()=>buildForecastScenario(report.lines,'base',wcInput),[report.lines,wcInput])
+ const capexByScenario=useMemo(()=>FORECAST_SCENARIOS.map(s=>{const x=buildForecastScenario(report.lines,s.id,wcInput);const capex=report.lines.filter(l=>l.movementClass==='capex'&&l.status==='projetado').reduce((sum,l)=>sum+l.forecast,0)*s.expenseFactor;return {id:s.id,label:s.label,capex,result:x.result,delta:x.deltaToBase}}),[report.lines])
  const selectedCapex=capexByScenario.find(x=>x.id===scenario) ?? capexByScenario[0]
  const futurePeriods=periods.filter(p=>p>cutoff)
  const workingCapitalBase=workingCapitalData.find(row=>row.month===cutoff) ?? workingCapitalData[workingCapitalData.length-1]
