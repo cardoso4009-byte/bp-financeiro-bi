@@ -53,4 +53,3 @@ function calculateWorkingCapitalScenario(input: WorkingCapitalScenarioInput, rev
   const baseline = receita * 30 / 30 + custo * 30 / 30 - custo * 30 / 30
   return { cashImpact: baseline - current, cycle: input.pmrDias + input.pmeDias - input.pmpDias }
 }
-}
