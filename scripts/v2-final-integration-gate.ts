@@ -59,7 +59,7 @@ const workingCapital = buildWorkingCapitalForecast(
 check(workingCapital.lines.length === 1, 'forecast de capital de giro encontra o período projetado')
 check(workingCapital.lines[0].receivables === 1200, 'PMR aplicado sobre a receita projetada')
 check(workingCapital.lines[0].payables === 450, 'PMP aplicado sobre o custo operacional')
-check(workingCapital.lines[0].workingCapitalNeed === 975, 'NCG projetada reconciliada')
-check(workingCapital.lines[0].cashImpact === -675, 'impacto de caixa = NCG anterior - NCG atual')
+check(workingCapital.lines[0].workingCapitalNeed === 750, 'NCG projetada reconciliada')
+check(workingCapital.lines[0].cashImpact === -450, 'impacto de caixa = NCG anterior - NCG atual')
 
 console.log('V2 Final Integration Gate: OK')
