@@ -40,3 +40,57 @@ export function buildForecastScenario(lines: V2ForecastLine[], scenarioId: Forec
   const base = scenarioId==='base' ? result : buildForecastScenario(lines,'base').result
   return {scenario,revenue,expenses,capex,result,deltaToBase:result-base}
 }
+
+
+export interface ScenarioCashBridgeRow {
+  period: string
+  opening: number
+  operatingCash: number
+  capexCash: number
+  workingCapitalImpact: number
+  netCashImpact: number
+  closing: number
+}
+
+export interface ScenarioCashBridgeReport {
+  rows: ScenarioCashBridgeRow[]
+  finalCash: number
+  minimumCash: number
+}
+
+type CapexScheduleLike = { competence: string; plannedAmount: number }
+
+type WorkingCapitalImpactLike = { period: string; cashImpact: number }
+
+export function buildScenarioCashBridge(
+  lines: V2ForecastLine[],
+  periods: string[],
+  scenarioId: ForecastScenario,
+  capexSchedule: CapexScheduleLike[],
+  workingCapitalLines: WorkingCapitalImpactLike[],
+  initialCash = 50000,
+): ScenarioCashBridgeReport {
+  const scenario = FORECAST_SCENARIOS.find(item=>item.id===scenarioId) ?? FORECAST_SCENARIOS[0]
+  let closing = initialCash
+  const rows = periods.map(period => {
+    const periodLines = lines.filter(line => line.period === period && line.status === 'projetado')
+    const operatingCash = periodLines.reduce((sum,line) => {
+      if (line.movementClass === 'capex') return sum
+      return sum + line.forecast * factorForClass(line, scenario)
+    }, 0)
+    const scheduledCapex = capexSchedule
+      .filter(entry => entry.competence === period)
+      .reduce((sum,entry) => sum + Math.abs(entry.plannedAmount), 0)
+    const capexCash = -scheduledCapex * scenario.expenseFactor
+    const workingCapitalImpact = workingCapitalLines.find(line => line.period === period)?.cashImpact ?? 0
+    const opening = closing
+    const netCashImpact = operatingCash + capexCash + workingCapitalImpact
+    closing = opening + netCashImpact
+    return {period, opening, operatingCash, capexCash, workingCapitalImpact, netCashImpact, closing}
+  })
+  return {
+    rows,
+    finalCash: rows.at(-1)?.closing ?? initialCash,
+    minimumCash: rows.length ? Math.min(...rows.map(row=>row.closing)) : initialCash,
+  }
+}
