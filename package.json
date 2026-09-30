@@ -24,7 +24,9 @@
     "v2:forecast:gate": "tsx scripts/v2-forecast-gate.ts",
     "v2:forecast:scenario:gate": "tsx scripts/v2-forecast-scenario-gate.ts",
     "v2:final:integration:gate": "tsx scripts/v2-final-integration-gate.ts",
-    "dependency:lock:gate": "tsx scripts/dependency-lock-gate.ts"
+    "dependency:lock:gate": "tsx scripts/dependency-lock-gate.ts",
+    "auth:hash": "tsx scripts/auth-password-hash.ts",
+    "auth:security:gate": "tsx scripts/auth-security-gate.ts"
   },
   "dependencies": {
     "next": "15.5.27",
