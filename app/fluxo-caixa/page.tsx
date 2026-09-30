@@ -8,6 +8,7 @@ import { openReceivablesPayables } from '@/lib/contas-receber-pagar'
 import ReportPeriodFilter, { type ReportPeriod } from '@/components/report-period-filter'
 import { DEFAULT_REPORT_PERIOD, REPORT_MONTHS, competence } from '@/lib/report-period'
 import { readCapexSchedule, type CapexScheduleEntry } from '@/lib/capex-schedule'
+import { workingCapitalData } from '@/lib/capital-giro-engine'
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 type Kind = 'inflows' | 'operatingOutflows' | 'capex' | 'financing'
@@ -31,6 +32,7 @@ export default function FluxoCaixa() {
   const start = period.view === 'acumulado' ? 0 : period.month - 1
   const end = period.month - 1
   const rows = all.slice(start, end + 1)
+  const workingCapitalRows = workingCapitalData.slice(start, end + 1).map((row, i) => ({ ...row, cashImpact: i === 0 ? 0 : workingCapitalData[start + i - 1].necessidadeCapitalGiro - row.necessidadeCapitalGiro }))
   const previousMonth = period.month === 1 ? 12 : period.month - 1
   const previousYear = period.month === 1 ? period.year - 1 : period.year
   const status = forecastStatus(rows)
