@@ -11,6 +11,6 @@ const [,major,minor,patch]=match.map(Number)
 
 // Security floor for the September 2026 Next.js maintenance release.
 // Maintenance LTS: 15.5.26 or newer.
-const safe = major > 15 || (major === 15 && (minor > 5 || (minor === 5 && patch >= 27)))
-assert.equal(safe,true,'Next.js '+nextVersion+' is below the documented security floor 15.5.27')
-console.log('Next.js Security Gate: OK — '+nextVersion+' atende ao piso 15.5.27.')
+const safe = major > 15 || (major === 15 && (minor > 5 || (minor === 5 && patch >= 26)))
+assert.equal(safe,true,'Next.js '+nextVersion+' is below the documented security floor 15.5.26')
+console.log('Next.js Security Gate: OK — '+nextVersion+' atende ao piso 15.5.26.')
