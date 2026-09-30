@@ -48,18 +48,15 @@ export function buildForecastConsolidado(report: V2ForecastReport): ForecastCons
     byPeriod.set(line.period, current)
   }
 
-  const rows = report.annualPeriods.map(period => {
-    const lines = byPeriod.get(period) ?? []
-    return {
-      period,
-      revenue: sum(lines, ['receita']),
-      operatingCosts: sum(lines, ['custo', 'opex', 'imposto']),
-      financialResult: sum(lines, ['financeiro']),
-      capex: sum(lines, ['capex']),
-      result: metric(lines).result,
-      status: period <= report.cutoffPeriod ? 'realizado' : 'projetado',
-    }
-  })
+  const rows: ForecastConsolidadoRow[] = report.annualPeriods.map(period => ({
+    period,
+    revenue: sum(byPeriod.get(period) ?? [], ['receita']),
+    operatingCosts: sum(byPeriod.get(period) ?? [], ['custo', 'opex', 'imposto']),
+    financialResult: sum(byPeriod.get(period) ?? [], ['financeiro']),
+    capex: sum(byPeriod.get(period) ?? [], ['capex']),
+    result: metric(byPeriod.get(period) ?? []).result,
+    status: period <= report.cutoffPeriod ? 'realizado' : 'projetado',
+  }))
 
   const realized = metric(report.lines.filter(line => line.status === 'realizado'))
   const projected = metric(report.lines.filter(line => line.status === 'projetado'))
