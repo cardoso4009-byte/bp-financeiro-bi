@@ -38,7 +38,7 @@ create table if not exists users (
   email text not null unique,
   password_hash text not null,
   name text not null,
-  role text not null default 'admin',
+  role_id uuid references roles(id) on delete restrict,
   active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -47,7 +47,7 @@ create table if not exists users (
 create table if not exists company_users (
   company_id uuid not null references companies(id) on delete cascade,
   user_id uuid not null references users(id) on delete cascade,
-  role text not null default 'member',
+  role_id uuid not null references roles(id) on delete restrict,
   created_at timestamptz not null default now(),
   primary key (company_id, user_id)
 );
