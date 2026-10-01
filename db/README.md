@@ -10,7 +10,7 @@ Phase 1 establishes the identity and governance foundation:
 - sessions
 - audit_log
 
-The application authentication currently remains environment-based. The RBAC model is prepared with system/company scopes and explicit permissions; database-backed authentication is a later step. This schema is intentionally prepared for the later migration to multi-user authentication and company-level access control.
+The application authentication currently remains environment-based. The RBAC model is prepared with system/company scopes and explicit permissions; database-backed authentication is a later step. This schema is intentionally prepared for the later migration to multi-user authentication and company-level access control.\n\n## Connection foundation\n\nThe application expects `DATABASE_URL` to be a PostgreSQL connection string using the `postgres://` or `postgresql://` protocol. The current phase validates configuration only; it does not yet replace production authentication or write financial data.\n\nThe PostgreSQL driver will be introduced after the production database provider is provisioned and its connection is validated, keeping the current login stable during the migration.
 
 ## Environment
 
