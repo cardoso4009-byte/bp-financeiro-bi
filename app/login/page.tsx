@@ -60,7 +60,7 @@ export default function LoginPage() {
           {error && <p role="alert" style={{ margin: 0, color: '#b42318', fontSize: 14 }}>{error}</p>}
 
           <button disabled={loading} type="submit" style={{ marginTop: 6, padding: 13, border: 0, borderRadius: 9, background: '#1677c8', color: '#fff', fontWeight: 800, cursor: loading ? 'wait' : 'pointer' }}>
-            {loading ? 'Entrando…' : 'Entrar'}
+            {loading ? '⌛ Autenticando…' : 'Entrar'}
           </button>
         </form>
       </section>
