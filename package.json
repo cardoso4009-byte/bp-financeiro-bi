@@ -26,7 +26,8 @@
     "v2:final:integration:gate": "tsx scripts/v2-final-integration-gate.ts",
     "dependency:lock:gate": "tsx scripts/dependency-lock-gate.ts",
     "auth:hash": "tsx scripts/auth-password-hash.ts",
-    "auth:security:gate": "tsx scripts/auth-security-gate.ts"
+    "auth:security:gate": "tsx scripts/auth-security-gate.ts",
+    "database:config:gate": "tsx scripts/database-config-gate.ts"
   },
   "dependencies": {
     "next": "15.5.27",
