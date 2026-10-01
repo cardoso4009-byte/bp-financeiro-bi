@@ -34,7 +34,14 @@ export async function POST(request: Request) {
     })
     return response
   } catch (error) {
-    console.error('[auth/login] safe configuration diagnostic:', safeAuthError(error))
-    return NextResponse.json({ error: 'Autenticação não configurada corretamente.' }, { status: 500 })
+    const diagnostic = safeAuthError(error)
+    console.error('[auth/login] safe configuration diagnostic:', diagnostic)
+
+    const message =
+      process.env.VERCEL_ENV === 'production'
+        ? 'Autenticação não configurada corretamente.'
+        : `Autenticação não configurada corretamente. Diagnóstico: ${diagnostic}.`
+
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
