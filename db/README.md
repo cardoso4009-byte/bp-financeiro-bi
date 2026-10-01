@@ -5,11 +5,12 @@ The BP Financeiro database will use PostgreSQL.
 Phase 1 establishes the identity and governance foundation:
 - companies
 - users
+- roles and permissions
 - company_users
 - sessions
 - audit_log
 
-The application authentication currently remains environment-based. This schema is intentionally prepared for the later migration to multi-user authentication and company-level access control.
+The application authentication currently remains environment-based. The RBAC model is prepared with system/company scopes and explicit permissions; database-backed authentication is a later step. This schema is intentionally prepared for the later migration to multi-user authentication and company-level access control.
 
 ## Environment
 
