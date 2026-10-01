@@ -1,3 +1,5 @@
+import { neon } from '@neondatabase/serverless'
+
 const DATABASE_URL_ERROR = 'DATABASE_URL is not configured'
 
 export function getDatabaseUrl() {
@@ -14,4 +16,10 @@ export function getDatabaseUrl() {
 
 export function isDatabaseConfigured() {
   return Boolean(process.env.DATABASE_URL?.trim())
+}
+
+export async function checkDatabaseConnection() {
+  const sql = neon(getDatabaseUrl())
+  const rows = await sql`select 1 as ok`
+  return rows[0]?.ok === 1
 }
