@@ -87,7 +87,8 @@ export async function verifyPasswordHash(password: string, configured: string) {
     !salt ||
     !Number.isInteger(iterations) ||
     iterations < 100_000 ||
-    !/^[0-9a-f]{64}$/i.test(expectedHex ?? '')
+    !expectedHex ||
+    !/^[0-9a-f]{64}$/i.test(expectedHex)
   ) {
     throw new Error('password_hash has an invalid format')
   }
@@ -122,12 +123,13 @@ export async function findDatabaseUser(email: string): Promise<DatabaseAuthUser 
       u.email,
       u.name,
       u.password_hash as "passwordHash",
-      r.key as "roleKey",
+      cr.key as "roleKey",
       c.id as "companyId",
       c.name as "companyName"
     from users u
     join roles r on r.id = u.role_id
-    join company_users cu on cu.user_id = u.id and cu.role_id = u.role_id
+    join company_users cu on cu.user_id = u.id
+    join roles cr on cr.id = cu.role_id
     join companies c on c.id = cu.company_id
     where lower(u.email) = lower(${email.trim()})
       and u.active = true
