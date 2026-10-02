@@ -27,12 +27,14 @@
     "dependency:lock:gate": "tsx scripts/dependency-lock-gate.ts",
     "auth:hash": "tsx scripts/auth-password-hash.ts",
     "auth:security:gate": "tsx scripts/auth-security-gate.ts",
-    "database:config:gate": "tsx scripts/database-config-gate.ts"
+    "database:config:gate": "tsx scripts/database-config-gate.ts",
+    "database:connection:gate": "tsx scripts/database-connection-gate.ts"
   },
   "dependencies": {
     "next": "15.5.27",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "@neondatabase/serverless": "1.1.0"
   },
   "devDependencies": {
     "@types/node": "20.14.12",
