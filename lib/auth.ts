@@ -1,11 +1,27 @@
-import { createHmac, timingSafeEqual } from 'node:crypto'
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
+import { neon } from '@neondatabase/serverless'
+import { getDatabaseUrl } from '@/lib/db'
 
 export const AUTH_COOKIE_NAME = 'bp_session'
 const SESSION_TTL_SECONDS = 60 * 60 * 8
 
 type SessionPayload = {
   email: string
+  userId?: string
+  companyId?: string
+  roleKey?: string
+  nonce: string
   exp: number
+}
+
+export type DatabaseAuthUser = {
+  id: string
+  email: string
+  name: string
+  passwordHash: string
+  roleKey: string
+  companyId: string
+  companyName: string
 }
 
 function env(name: string) {
@@ -23,9 +39,20 @@ function sign(value: string) {
   return createHmac('sha256', env('BP_AUTH_SESSION_SECRET')).update(value).digest('base64url')
 }
 
-export function createSession(email: string) {
+function hashSessionToken(token: string) {
+  return createHash('sha256').update(token).digest('hex')
+}
+
+export function createSession(
+  email: string,
+  context?: Pick<DatabaseAuthUser, 'id' | 'companyId' | 'roleKey'>,
+) {
   const payload: SessionPayload = {
     email: email.trim().toLowerCase(),
+    userId: context?.id,
+    companyId: context?.companyId,
+    roleKey: context?.roleKey,
+    nonce: randomBytes(16).toString('hex'),
     exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
   }
   const encoded = base64url(JSON.stringify(payload))
@@ -45,20 +72,24 @@ export function verifySession(token?: string | null): SessionPayload | null {
 
   try {
     const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as SessionPayload
-    if (!payload.email || payload.exp <= Math.floor(Date.now() / 1000)) return null
+    if (!payload.email || !payload.nonce || payload.exp <= Math.floor(Date.now() / 1000)) return null
     return payload
   } catch {
     return null
   }
 }
 
-export async function verifyPassword(password: string) {
-  const configured = env('BP_AUTH_PASSWORD_HASH')
+export async function verifyPasswordHash(password: string, configured: string) {
   const [salt, iterationsText, expectedHex] = configured.split(':')
   const iterations = Number(iterationsText)
 
-  if (!salt || !Number.isInteger(iterations) || iterations < 100_000 || !expectedHex) {
-    throw new Error('BP_AUTH_PASSWORD_HASH has an invalid format')
+  if (
+    !salt ||
+    !Number.isInteger(iterations) ||
+    iterations < 100_000 ||
+    !/^[0-9a-f]{64}$/i.test(expectedHex ?? '')
+  ) {
+    throw new Error('password_hash has an invalid format')
   }
 
   const encoder = new TextEncoder()
@@ -74,8 +105,62 @@ export async function verifyPassword(password: string) {
     key,
     256,
   )
-  const actualHex = Buffer.from(bits).toString('hex')
-  return actualHex === expectedHex
+  const actual = Buffer.from(bits)
+  const expected = Buffer.from(expectedHex, 'hex')
+  return actual.length === expected.length && timingSafeEqual(actual, expected)
+}
+
+export async function verifyPassword(password: string) {
+  return verifyPasswordHash(password, env('BP_AUTH_PASSWORD_HASH'))
+}
+
+export async function findDatabaseUser(email: string): Promise<DatabaseAuthUser | null> {
+  const sql = neon(getDatabaseUrl())
+  const rows = await sql`
+    select
+      u.id,
+      u.email,
+      u.name,
+      u.password_hash as "passwordHash",
+      r.key as "roleKey",
+      c.id as "companyId",
+      c.name as "companyName"
+    from users u
+    join roles r on r.id = u.role_id
+    join company_users cu on cu.user_id = u.id and cu.role_id = u.role_id
+    join companies c on c.id = cu.company_id
+    where lower(u.email) = lower(${email.trim()})
+      and u.active = true
+    order by c.created_at asc
+    limit 1
+  `
+
+  return (rows[0] as DatabaseAuthUser | undefined) ?? null
+}
+
+export async function createDatabaseSession(user: DatabaseAuthUser) {
+  const token = createSession(user.email, user)
+  const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000)
+
+  const sql = neon(getDatabaseUrl())
+  await sql`
+    insert into sessions (user_id, token_hash, expires_at)
+    values (${user.id}, ${hashSessionToken(token)}, ${expiresAt.toISOString()})
+  `
+
+  return token
+}
+
+export async function revokeDatabaseSession(token?: string | null) {
+  if (!token) return
+
+  const sql = neon(getDatabaseUrl())
+  await sql`
+    update sessions
+    set revoked_at = now()
+    where token_hash = ${hashSessionToken(token)}
+      and revoked_at is null
+  `
 }
 
 export function configuredAuthEmail() {
