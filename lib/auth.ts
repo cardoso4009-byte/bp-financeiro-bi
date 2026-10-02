@@ -106,8 +106,8 @@ export async function verifyPasswordHash(password: string, configured: string) {
     key,
     256,
   )
-  const actual = Buffer.from(bits)
-  const expected = Buffer.from(expectedHex, 'hex')
+  const actual = new Uint8Array(bits)
+  const expected = new Uint8Array(Buffer.from(expectedHex, 'hex'))
   return actual.length === expected.length && timingSafeEqual(actual, expected)
 }
 
