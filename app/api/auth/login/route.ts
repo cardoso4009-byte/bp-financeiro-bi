@@ -1,5 +1,14 @@
 import { NextResponse } from 'next/server'
-import { AUTH_COOKIE_NAME, configuredAuthEmail, createSession, verifyPassword } from '@/lib/auth'
+import {
+  AUTH_COOKIE_NAME,
+  configuredAuthEmail,
+  createDatabaseSession,
+  createSession,
+  findDatabaseUser,
+  verifyPassword,
+  verifyPasswordHash,
+} from '@/lib/auth'
+import { isDatabaseConfigured } from '@/lib/db'
 
 export async function POST(request: Request) {
   try {
@@ -7,14 +16,32 @@ export async function POST(request: Request) {
     const email = String(body?.email ?? '').trim().toLowerCase()
     const password = String(body?.password ?? '')
 
-    if (!email || !password || email !== configuredAuthEmail() || !(await verifyPassword(password))) {
+    if (!email || !password) {
       return NextResponse.json({ error: 'Credenciais inválidas.' }, { status: 401 })
+    }
+
+    let sessionToken: string
+
+    if (isDatabaseConfigured()) {
+      const user = await findDatabaseUser(email)
+
+      if (!user || !(await verifyPasswordHash(password, user.passwordHash))) {
+        return NextResponse.json({ error: 'Credenciais inválidas.' }, { status: 401 })
+      }
+
+      sessionToken = await createDatabaseSession(user)
+    } else {
+      if (email !== configuredAuthEmail() || !(await verifyPassword(password))) {
+        return NextResponse.json({ error: 'Credenciais inválidas.' }, { status: 401 })
+      }
+
+      sessionToken = createSession(email)
     }
 
     const response = NextResponse.json({ ok: true })
     response.cookies.set({
       name: AUTH_COOKIE_NAME,
-      value: createSession(email),
+      value: sessionToken,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
