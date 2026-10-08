@@ -54,7 +54,11 @@ export async function middleware(request: NextRequest) {
   }
 
   const token = request.cookies.get(COOKIE_NAME)?.value
-  if (await verifySession(token)) return NextResponse.next()
+  if (await verifySession(token)) {
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set('x-bp-pathname', pathname)
+    return NextResponse.next({ request: { headers: requestHeaders } })
+  }
 
   const loginUrl = new URL('/login', request.url)
   loginUrl.searchParams.set('next', pathname)
