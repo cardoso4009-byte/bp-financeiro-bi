@@ -1,3 +1,4 @@
+import { neon } from '@neondatabase/serverless'
 import { NextRequest, NextResponse } from 'next/server'
 
 const COOKIE_NAME = 'bp_session'
@@ -41,6 +42,33 @@ async function verifySession(token: string | undefined) {
   }
 }
 
+async function isDatabaseSessionActive(token: string) {
+  const databaseUrl = process.env.DATABASE_URL?.trim()
+  if (!databaseUrl) return true
+
+  try {
+    const digest = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(token),
+    )
+    const tokenHash = Array.from(new Uint8Array(digest))
+      .map(byte => byte.toString(16).padStart(2, '0'))
+      .join('')
+
+    const sql = neon(databaseUrl)
+    const rows = await sql`select 1 as ok
+      from sessions
+      where token_hash = ${tokenHash}
+        and revoked_at is null
+        and expires_at > now()
+      limit 1`
+
+    return rows.length > 0
+  } catch {
+    return false
+  }
+}
+
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
@@ -54,7 +82,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const token = request.cookies.get(COOKIE_NAME)?.value
-  if (await verifySession(token)) {
+  if (await verifySession(token) && (!process.env.DATABASE_URL || (token && await isDatabaseSessionActive(token)))) {
     const requestHeaders = new Headers(request.headers)
     requestHeaders.set('x-bp-pathname', pathname)
     return NextResponse.next({ request: { headers: requestHeaders } })
