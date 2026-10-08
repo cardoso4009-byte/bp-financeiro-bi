@@ -48,3 +48,52 @@ export async function requirePermission(permission: PermissionKey | string) {
     throw new Error('FORBIDDEN')
   }
 }
+
+
+export function getRequiredPermissionForPath(pathname: string): PermissionKey | null {
+  if (pathname === '/' || pathname === '/indicadores') {
+    return PERMISSIONS.DASHBOARD_VIEW
+  }
+
+  if (
+    pathname === '/forecast-gerencial-v2' ||
+    pathname === '/painel-executivo-forecast-v2' ||
+    pathname === '/cenarios-forecast-v2'
+  ) {
+    return PERMISSIONS.FORECAST_MANAGE
+  }
+
+  if (pathname === '/auditoria-contabil') {
+    return PERMISSIONS.AUDIT_READ
+  }
+
+  if (pathname === '/lancamentos' || pathname === '/integracao') {
+    return PERMISSIONS.FINANCIAL_WRITE
+  }
+
+  const financialReadPaths = [
+    '/dre-gerencial',
+    '/balanco-gerencial',
+    '/dfc',
+    '/dmpl',
+    '/gestao',
+    '/fluxo-caixa',
+    '/contas-receber-pagar',
+    '/capital-giro',
+    '/opex',
+    '/centros-resultado',
+    '/budget-realizado',
+    '/capex-gerencial',
+    '/capex-cronograma',
+    '/controladoria-gerencial-v2',
+    '/plano-acao-gerencial-v2',
+    '/contabil',
+    '/razao',
+    '/mapeamento-contabil',
+    '/demonstracoes-integradas',
+    '/dfc-integrada',
+    '/fechamento-contabil',
+  ]
+
+  return financialReadPaths.includes(pathname) ? PERMISSIONS.FINANCIAL_READ : null
+}
