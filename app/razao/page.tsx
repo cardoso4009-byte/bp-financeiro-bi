@@ -8,12 +8,16 @@ import { buildLedger } from '@/lib/ledger-engine'
 import ReportPeriodFilter, { type ReportPeriod } from '@/components/report-period-filter'
 import { REPORT_MONTHS, competence } from '@/lib/report-period'
 
-const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 2 })
+const inputStyle: React.CSSProperties = { width: '100%', minWidth: 0, padding: '10px 12px', border: '1px solid #d6deea', borderRadius: 8, background: '#fff', color: '#17345f', font: 'inherit' }
 
 export default function RazaoPage() {
   const [journal, setJournal] = useState<JournalEntry[]>(sampleJournal)
   const [integrated, setIntegrated] = useState(false)
   const [period, setPeriod] = useState<ReportPeriod>({ year: 2026, month: 12, view: 'mensal' })
+  const [search, setSearch] = useState('')
+  const [accountClass, setAccountClass] = useState('todas')
+  const [sourceFilter, setSourceFilter] = useState('todas')
 
   useEffect(() => {
     const result = journalFromLocalStorage()
@@ -34,6 +38,25 @@ export default function RazaoPage() {
   }, [journal, period])
 
   const ledger = useMemo(() => buildLedger(scopedJournal, chartOfAccounts), [scopedJournal])
+  const filteredLedger = useMemo(() => {
+    const normalizedSearch = search.trim().toLocaleLowerCase('pt-BR')
+    return ledger.map(item => {
+      const accountMatches = accountClass === 'todas' || item.account.class === accountClass
+      const movements = item.movements.filter(movement => {
+        const textMatches = !normalizedSearch || [
+          movement.entryId, movement.date, movement.description, movement.document ?? '',
+          item.account.code, item.account.name, movement.source ?? '',
+        ].some(value => value.toLocaleLowerCase('pt-BR').includes(normalizedSearch))
+        const sourceMatches = sourceFilter === 'todas' || movement.source === sourceFilter
+        return textMatches && sourceMatches
+      })
+      const debit = movements.reduce((sum, movement) => sum + movement.debit, 0)
+      const credit = movements.reduce((sum, movement) => sum + movement.credit, 0)
+      const lastMovement = movements[movements.length - 1]
+      return { ...item, movements, debit, credit, balance: lastMovement?.balance ?? 0, accountMatches }
+    }).filter(item => item.accountMatches && item.movements.length > 0)
+  }, [ledger, search, accountClass, sourceFilter])
+
   const totalDebit = ledger.reduce((sum, item) => sum + item.debit, 0)
   const totalCredit = ledger.reduce((sum, item) => sum + item.credit, 0)
   const balanced = Math.abs(totalDebit - totalCredit) < 0.01
@@ -64,12 +87,35 @@ export default function RazaoPage() {
       </div>
 
       <section className="panel wide">
-        <div className="panel-title"><h2>Razão por conta</h2><span>{label}</span></div>
-        <div className="note">O Razão é derivado do <strong>mesmo Diário utilizado pela contabilidade</strong>. Mensal considera a competência selecionada; Acumulado soma janeiro até o mês escolhido. O filtro não altera a origem dos lançamentos.</div>
+        <div className="panel-title"><h2>Consulta detalhada</h2><span>{filteredLedger.reduce((sum, item) => sum + item.movements.length, 0)} partidas encontradas</span></div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 2fr) repeat(2, minmax(160px, 1fr))', gap: 12, margin: '14px 0 18px' }}>
+          <label style={{ display: 'grid', gap: 6, color: '#66758a', fontSize: 12, fontWeight: 700 }}>
+            Pesquisar lançamento, documento ou conta
+            <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Ex.: fornecedor, NF-102, 6.1..." style={inputStyle} />
+          </label>
+          <label style={{ display: 'grid', gap: 6, color: '#66758a', fontSize: 12, fontWeight: 700 }}>
+            Classe contábil
+            <select value={accountClass} onChange={event => setAccountClass(event.target.value)} style={inputStyle}>
+              <option value="todas">Todas as classes</option>
+              <option value="ativo">Ativo</option><option value="passivo">Passivo</option>
+              <option value="patrimonio">Patrimônio líquido</option><option value="receita">Receita</option>
+              <option value="custo">Custo</option><option value="despesa">Despesa</option>
+            </select>
+          </label>
+          <label style={{ display: 'grid', gap: 6, color: '#66758a', fontSize: 12, fontWeight: 700 }}>
+            Origem
+            <select value={sourceFilter} onChange={event => setSourceFilter(event.target.value)} style={inputStyle}>
+              <option value="todas">Todas as origens</option>
+              <option value="INTEGRACAO">Integração</option><option value="MANUAL">Manual</option><option value="IMPORTACAO">Importação</option>
+            </select>
+          </label>
+        </div>
+        <div className="note">A pesquisa filtra histórico, documento, código/nome da conta, data e origem. Os totais do cabeçalho continuam representando o período selecionado; a consulta abaixo mostra somente os resultados dos filtros.</div>
 
-        {ledger.map(item => (
+        {filteredLedger.length === 0 && <div className="note" style={{ marginTop: 16 }}>Nenhuma partida encontrada. Ajuste os filtros e tente novamente.</div>}
+        {filteredLedger.map(item => (
           <div key={item.account.code} style={{ marginTop: 18, border: '1px solid #e3e8ef', borderRadius: 10, overflow: 'hidden' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: '#f5f7fa' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: '#f5f7fa', gap: 16 }}>
               <div>
                 <strong>{item.account.code} — {item.account.name}</strong>
                 <div style={{ fontSize: 12, color: '#66758a', marginTop: 4 }}>{item.account.class} • natureza {item.account.nature}</div>
@@ -78,19 +124,19 @@ export default function RazaoPage() {
             </div>
             <div className="table-wrap">
               <table>
-                <thead><tr><th>Data</th><th>Histórico</th><th>Origem</th><th>Débito</th><th>Crédito</th><th>Saldo</th></tr></thead>
+                <thead><tr><th>Data</th><th>Histórico</th><th>Documento / origem</th><th>Débito</th><th>Crédito</th><th>Saldo</th></tr></thead>
                 <tbody>{item.movements.map((movement, index) => (
                   <tr key={`${movement.entryId}-${index}`}>
                     <td>{movement.date}</td>
-                    <td>{movement.description}</td>
-                    <td>{movement.source ?? '—'}</td>
+                    <td>{movement.description}<small style={{ display: 'block', color: '#718198', marginTop: 3 }}>ID: {movement.entryId}</small></td>
+                    <td>{movement.document ?? '—'}<small style={{ display: 'block', color: '#718198', marginTop: 3 }}>{movement.source ?? 'Origem não informada'}</small></td>
                     <td>{movement.debit ? brl(movement.debit) : '—'}</td>
                     <td>{movement.credit ? brl(movement.credit) : '—'}</td>
                     <td><strong>{brl(movement.balance)}</strong></td>
                   </tr>
                 ))}</tbody>
                 <tfoot><tr>
-                  <td colSpan={3}><strong>Totais da conta</strong></td>
+                  <td colSpan={3}><strong>Totais das partidas exibidas</strong></td>
                   <td><strong>{brl(item.debit)}</strong></td>
                   <td><strong>{brl(item.credit)}</strong></td>
                   <td><strong>{brl(item.balance)}</strong></td>
@@ -103,7 +149,7 @@ export default function RazaoPage() {
 
       <section className="panel">
         <div className="panel-title"><h2>Próximo elo da cadeia</h2><span>Balancete de Verificação</span></div>
-        <div className="note"><strong>Diário → Razão → Balancete → BP + DRE + DFC + DMPL.</strong> O período selecionado agora acompanha a leitura do Razão sem romper a cadeia contábil.</div>
+        <div className="note"><strong>Diário → Razão → Balancete → BP + DRE + DFC + DMPL.</strong> O período selecionado acompanha a leitura do Razão sem romper a cadeia contábil.</div>
       </section>
     </main>
   )
