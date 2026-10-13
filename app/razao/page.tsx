@@ -6,6 +6,7 @@ import { chartOfAccounts, sampleJournal, type JournalEntry } from '@/lib/account
 import { journalFromLocalStorage } from '@/lib/financial-accounting-integration'
 import { buildLedger } from '@/lib/ledger-engine'
 import ReportPeriodFilter, { type ReportPeriod } from '@/components/report-period-filter'
+import RazaoImportacaoPreview from './importacao-preview'
 import { REPORT_MONTHS, competence } from '@/lib/report-period'
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 2 })
