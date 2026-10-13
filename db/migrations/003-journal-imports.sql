@@ -68,9 +68,3 @@ create index if not exists idx_journal_lines_account on journal_lines(account_co
 
 create index if not exists idx_import_batches_company_created
   on import_batches(company_id, created_at desc);
-
--- Record schema evolution without logging file contents or financial payloads.
-insert into audit_log (company_id, user_id, action, entity, entity_id, metadata)
-select null, null, 'schema.migration_defined', 'database_migration', '003-journal-imports',
-       '{"status":"defined_in_code_only","requires_explicit_review_and_application":true}'::jsonb
-where false;
