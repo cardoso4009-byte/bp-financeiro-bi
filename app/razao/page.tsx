@@ -87,6 +87,8 @@ export default function RazaoPage() {
         <div className="card"><span>Status</span><strong>{balanced ? '✓ OK' : '! Revisar'}</strong><small>{balanced ? 'Razão balanceado' : 'Diferença entre débitos e créditos'}</small></div>
       </div>
 
+      <RazaoImportacaoPreview existingEntries={journal} />
+
       <section className="panel wide">
         <div className="panel-title"><h2>Consulta detalhada</h2><span>{filteredLedger.reduce((sum, item) => sum + item.movements.length, 0)} partidas encontradas</span></div>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 2fr) repeat(2, minmax(160px, 1fr))', gap: 12, margin: '14px 0 18px' }}>
