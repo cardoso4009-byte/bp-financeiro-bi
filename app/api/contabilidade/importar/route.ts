@@ -27,6 +27,129 @@ function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status })
 }
 
+function parseCsv(text: string) {
+  const firstLine = text.split(/\r?\n/, 1)[0] ?? ''
+  const delimiters = [';', ',', '\t']
+  const delimiter = delimiters
+    .map(value => ({ value, count: firstLine.split(value).length - 1 }))
+    .sort((a, b) => b.count - a.count)[0]?.value ?? ';'
+  const rows: string[][] = []
+  let row: string[] = []
+  let cell = ''
+  let quoted = false
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i]
+    if (char === '"') {
+      if (quoted && text[i + 1] === '"') {
+        cell += '"'
+        i++
+      } else {
+        quoted = !quoted
+      }
+    } else if (!quoted && char === delimiter) {
+      row.push(cell.trim())
+      cell = ''
+    } else if (!quoted && (char === '\n' || char === '\r')) {
+      if (char === '\r' && text[i + 1] === '\n') i++
+      row.push(cell.trim())
+      if (row.some(value => value !== '')) rows.push(row)
+      row = []
+      cell = ''
+    } else {
+      cell += char
+    }
+  }
+  if (quoted) throw new Error('CSV contém aspas não fechadas.')
+  row.push(cell.trim())
+  if (row.some(value => value !== '')) rows.push(row)
+  if (rows.length < 2) throw new Error('CSV não contém linhas de lançamento.')
+
+  const normalizeHeader = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/[\s_-]+/g, '')
+  const headers = rows[0].map(normalizeHeader)
+  const aliases: Record<string, string[]> = {
+    id: ['id', 'idLancamento', 'lancamentoid'],
+    date: ['data', 'date'],
+    description: ['historico', 'descricao', 'description'],
+    account: ['conta', 'codigoConta', 'account'],
+    debit: ['debito', 'debit'],
+    credit: ['credito', 'credit'],
+    competence: ['competencia', 'competence'],
+    document: ['documento', 'document', 'nf'],
+    costCenter: ['centrodecusto', 'centrocusto', 'costcenter'],
+  }
+  const positions: Record<string, number> = {}
+  for (const [key, names] of Object.entries(aliases)) {
+    const found = headers.findIndex(header => names.map(normalizeHeader).includes(header))
+    if (found >= 0) positions[key] = found
+  }
+  for (const required of ['id', 'date', 'description', 'account', 'debit', 'credit']) {
+    if (positions[required] === undefined) throw new Error(`Coluna obrigatória ausente: ${required}.`)
+  }
+
+  const get = (values: string[], key: string) => {
+    const index = positions[key]
+    return index === undefined ? '' : (values[index] ?? '').trim()
+  }
+  const parseMoney = (raw: string) => {
+    const value = raw.replace(/\s/g, '').replace(/^R\$/i, '')
+    if (!value) return 0
+    let normalized = value
+    if (value.includes(',') && value.includes('.')) {
+      normalized = value.lastIndexOf(',') > value.lastIndexOf('.')
+        ? value.replace(/\./g, '').replace(',', '.')
+        : value.replace(/,/g, '')
+    } else if (value.includes(',')) {
+      normalized = value.replace(/\./g, '').replace(',', '.')
+    }
+    const amount = Number(normalized)
+    if (!Number.isFinite(amount) || amount < 0 || Math.abs(amount * 100 - Math.round(amount * 100)) > 0.0001) {
+      throw new Error(`Valor monetário inválido: ${raw}.`)
+    }
+    return Math.round(amount * 100) / 100
+  }
+  const parseDate = (raw: string) => {
+    let value = raw
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+      const [day, month, year] = value.split('/')
+      value = `${year}-${month}-${day}`
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error(`Data inválida: ${raw}.`)
+    const date = new Date(`${value}T00:00:00.000Z`)
+    if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+      throw new Error(`Data inválida: ${raw}.`)
+    }
+    return value
+  }
+
+  const entries = new Map<string, ImportEntry>()
+  for (let i = 1; i < rows.length; i++) {
+    const values = rows[i]
+    if (values.length !== headers.length) throw new Error(`Quantidade de colunas incorreta na linha ${i + 1}.`)
+    const id = get(values, 'id')
+    const date = parseDate(get(values, 'date'))
+    const description = get(values, 'description')
+    const account = get(values, 'account')
+    if (!id || !description || !account) throw new Error(`ID, histórico e conta são obrigatórios na linha ${i + 1}.`)
+    const competenceRaw = get(values, 'competence')
+    const competence = competenceRaw
+      ? (/^\d{4}-\d{2}$/.test(competenceRaw) ? competenceRaw : parseDate(competenceRaw))
+      : undefined
+    const document = get(values, 'document') || undefined
+    const costCenter = get(values, 'costCenter') || undefined
+    let entry = entries.get(id)
+    if (!entry) {
+      entry = { id, date, description, competence, document, costCenter, lines: [] }
+      entries.set(id, entry)
+    } else if (entry.date !== date || entry.description !== description ||
+      entry.competence !== competence || entry.document !== document || entry.costCenter !== costCenter) {
+      throw new Error(`As linhas do lançamento ${id} possuem dados de cabeçalho diferentes.`)
+    }
+    entry.lines.push({ account, debit: parseMoney(get(values, 'debit')), credit: parseMoney(get(values, 'credit')) })
+  }
+  return Array.from(entries.values())
+}
+
 function validDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
   const date = new Date(`${value}T00:00:00.000Z`)
@@ -47,8 +170,7 @@ function validateEntries(entries: unknown): entries is ImportEntry[] {
     if (typeof entry.date !== 'string' || !validDate(entry.date)) return false
     if (entry.competence !== undefined && entry.competence !== '') {
       if (typeof entry.competence !== 'string' ||
-          !(/^\d{4}-\d{2}$/.test(entry.competence) ||
-            validDate(entry.competence))) return false
+          !(/^\d{4}-\d{2}$/.test(entry.competence) || validDate(entry.competence))) return false
     }
     if (entry.document !== undefined && (typeof entry.document !== 'string' || entry.document.length > 255)) return false
     if (entry.costCenter !== undefined && (typeof entry.costCenter !== 'string' || entry.costCenter.length > 255)) return false
@@ -84,17 +206,17 @@ export async function POST(request: Request) {
   const cookie = request.headers.get('cookie') ?? ''
   const token = cookie.split(';').map(part => part.trim())
     .find(part => part.startsWith(AUTH_COOKIE_NAME + '='))?.slice(AUTH_COOKIE_NAME.length + 1)
-  const session = verifySession(token)
+  let session: ReturnType<typeof verifySession>
+  try {
+    session = verifySession(token)
+  } catch {
+    return jsonError('Sessão não pôde ser validada.', 401)
+  }
   if (!session?.userId || !session.companyId) {
     return jsonError('Sessão inválida ou sem vínculo com uma empresa.', 401)
   }
 
-  let body: {
-    fileName?: unknown
-    fileContent?: unknown
-    idempotencyKey?: unknown
-    entries?: unknown
-  }
+  let body: { fileName?: unknown; fileContent?: unknown; idempotencyKey?: unknown }
   try {
     const rawBody = await request.text()
     if (rawBody.length > 2_500_000) return jsonError('Arquivo de importação excede o limite permitido.', 413)
@@ -107,6 +229,9 @@ export async function POST(request: Request) {
       body.fileName.length > 255 || /[/\\]/.test(body.fileName)) {
     return jsonError('Nome de arquivo inválido.', 400)
   }
+  if (!body.fileName.toLowerCase().endsWith('.csv')) {
+    return jsonError('Nesta etapa, somente arquivos CSV são aceitos.', 415)
+  }
   if (typeof body.fileContent !== 'string' || !body.fileContent.length || body.fileContent.length > 2_000_000) {
     return jsonError('Conteúdo original do CSV é obrigatório e deve ter até 2 MB.', 400)
   }
@@ -114,7 +239,14 @@ export async function POST(request: Request) {
       body.idempotencyKey.length < 8 || body.idempotencyKey.length > 128) {
     return jsonError('Chave de idempotência inválida.', 400)
   }
-  if (!validateEntries(body.entries)) {
+
+  let entries: ImportEntry[]
+  try {
+    entries = parseCsv(body.fileContent)
+  } catch (error) {
+    return jsonError(error instanceof Error ? error.message : 'CSV inválido.', 422)
+  }
+  if (!validateEntries(entries)) {
     return jsonError('Lançamentos inválidos. Confira datas, contas, valores e partidas balanceadas.', 422)
   }
 
@@ -145,7 +277,7 @@ export async function POST(request: Request) {
         ${body.fileName},
         ${fileSha256},
         ${body.idempotencyKey},
-        ${JSON.stringify(body.entries)}::jsonb
+        ${JSON.stringify(entries)}::jsonb
       ) as result
     `
     return NextResponse.json({ ok: true, result: rows[0]?.result }, { status: 200 })
