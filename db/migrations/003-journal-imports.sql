@@ -68,3 +68,160 @@ create index if not exists idx_journal_lines_account on journal_lines(account_co
 
 create index if not exists idx_import_batches_company_created
   on import_batches(company_id, created_at desc);
+
+-- Server-side atomic import: validation and all writes run in one PostgreSQL transaction.
+create or replace function import_journal_batch(
+  p_company_id uuid,
+  p_user_id uuid,
+  p_file_name text,
+  p_file_sha256 text,
+  p_idempotency_key text,
+  p_entries jsonb
+) returns jsonb
+language plpgsql
+as $$
+declare
+  v_batch_id uuid;
+  v_existing import_batches%rowtype;
+  v_entry jsonb;
+  v_line jsonb;
+  v_entry_id uuid;
+  v_line_number integer;
+  v_rows integer;
+  v_lines integer;
+  v_debit numeric(18,2);
+  v_credit numeric(18,2);
+  v_content_sha256 text;
+begin
+  if p_company_id is null or p_user_id is null then
+    raise exception 'Contexto de empresa/usuário inválido' using errcode = '22023';
+  end if;
+  if length(trim(coalesce(p_file_name, ''))) = 0 or length(p_file_name) > 255 then
+    raise exception 'Nome de arquivo inválido' using errcode = '22023';
+  end if;
+  if p_file_sha256 !~ '^[a-fA-F0-9]{64}$' then
+    raise exception 'Hash do arquivo inválido' using errcode = '22023';
+  end if;
+  if length(trim(coalesce(p_idempotency_key, ''))) < 8 or length(p_idempotency_key) > 128 then
+    raise exception 'Chave de idempotência inválida' using errcode = '22023';
+  end if;
+  if jsonb_typeof(p_entries) <> 'array' then
+    raise exception 'A lista de lançamentos é inválida' using errcode = '22023';
+  end if;
+
+  v_rows := jsonb_array_length(p_entries);
+  if v_rows < 1 or v_rows > 500 then
+    raise exception 'A importação deve conter entre 1 e 500 lançamentos' using errcode = '22023';
+  end if;
+
+  -- Validate the entire payload before writing any rows.
+  for v_entry in select value from jsonb_array_elements(p_entries)
+  loop
+    if length(trim(coalesce(v_entry->>'id', ''))) = 0 then
+      raise exception 'Todo lançamento precisa de ID externo' using errcode = '22023';
+    end if;
+    if length(trim(coalesce(v_entry->>'description', ''))) = 0 then
+      raise exception 'Todo lançamento precisa de histórico' using errcode = '22023';
+    end if;
+    perform (v_entry->>'date')::date;
+    if jsonb_typeof(v_entry->'lines') <> 'array' or jsonb_array_length(v_entry->'lines') < 2 then
+      raise exception 'Cada lançamento precisa de pelo menos duas partidas' using errcode = '22023';
+    end if;
+
+    select count(*),
+           coalesce(sum((line->>'debit')::numeric), 0),
+           coalesce(sum((line->>'credit')::numeric), 0)
+      into v_lines, v_debit, v_credit
+      from jsonb_array_elements(v_entry->'lines') as line;
+
+    if v_lines < 2 or v_lines > 1000 then
+      raise exception 'Quantidade de partidas inválida' using errcode = '22023';
+    end if;
+    if abs(v_debit - v_credit) >= 0.01 then
+      raise exception 'Débitos e créditos não estão balanceados no lançamento %', v_entry->>'id' using errcode = '22023';
+    end if;
+
+    for v_line in select value from jsonb_array_elements(v_entry->'lines')
+    loop
+      if length(trim(coalesce(v_line->>'account', ''))) = 0 then
+        raise exception 'Código de conta obrigatório' using errcode = '22023';
+      end if;
+      if (v_line->>'debit')::numeric < 0 or (v_line->>'credit')::numeric < 0 then
+        raise exception 'Valores negativos não são permitidos' using errcode = '22023';
+      end if;
+      if (v_line->>'debit')::numeric > 0 and (v_line->>'credit')::numeric > 0 then
+        raise exception 'Uma partida não pode ter débito e crédito simultaneamente' using errcode = '22023';
+      end if;
+      if (v_line->>'debit')::numeric = 0 and (v_line->>'credit')::numeric = 0 then
+        raise exception 'Uma partida precisa ter débito ou crédito' using errcode = '22023';
+      end if;
+    end loop;
+  end loop;
+
+  insert into import_batches (
+    company_id, created_by, file_name, file_sha256, idempotency_key,
+    status, rows_received, rows_accepted, rows_rejected, metadata, completed_at
+  ) values (
+    p_company_id, p_user_id, p_file_name, lower(p_file_sha256), p_idempotency_key,
+    'processing', v_rows, 0, 0, jsonb_build_object('source', 'csv'), null
+  )
+  on conflict (company_id, idempotency_key) do nothing
+  returning id into v_batch_id;
+
+  if v_batch_id is null then
+    select * into v_existing
+      from import_batches
+      where company_id = p_company_id and idempotency_key = p_idempotency_key
+      for update;
+    if v_existing.file_sha256 <> lower(p_file_sha256) then
+      raise exception 'Chave de idempotência já utilizada por outro arquivo' using errcode = '23505';
+    end if;
+    if v_existing.status = 'completed' then
+      return jsonb_build_object('batchId', v_existing.id, 'status', 'already_completed',
+        'accepted', v_existing.rows_accepted, 'rejected', v_existing.rows_rejected);
+    end if;
+    raise exception 'Já existe uma importação em andamento com esta chave' using errcode = '23505';
+  end if;
+
+  for v_entry in select value from jsonb_array_elements(p_entries)
+  loop
+    v_content_sha256 := encode(digest(v_entry::text, 'sha256'), 'hex');
+    insert into journal_entries (
+      company_id, import_batch_id, created_by, external_id, entry_date, competence,
+      description, document, cost_center, source, content_sha256
+    ) values (
+      p_company_id, v_batch_id, p_user_id, trim(v_entry->>'id'), (v_entry->>'date')::date,
+      case
+        when coalesce(v_entry->>'competence', '') ~ '^\d{4}-\d{2}$'
+          then ((v_entry->>'competence') || '-01')::date
+        when coalesce(v_entry->>'competence', '') <> ''
+          then (v_entry->>'competence')::date
+        else null
+      end,
+      trim(v_entry->>'description'), nullif(trim(coalesce(v_entry->>'document', '')), ''),
+      nullif(trim(coalesce(v_entry->>'costCenter', '')), ''), 'IMPORTACAO', v_content_sha256
+    ) returning id into v_entry_id;
+
+    v_line_number := 0;
+    for v_line in select value from jsonb_array_elements(v_entry->'lines')
+    loop
+      v_line_number := v_line_number + 1;
+      insert into journal_lines (entry_id, line_number, account_code, debit, credit)
+      values (v_entry_id, v_line_number, trim(v_line->>'account'),
+        (v_line->>'debit')::numeric, (v_line->>'credit')::numeric);
+    end loop;
+  end loop;
+
+  update import_batches
+    set status = 'completed', rows_accepted = v_rows, completed_at = now()
+    where id = v_batch_id;
+
+  insert into audit_log (company_id, user_id, action, entity, entity_id, metadata)
+  values (p_company_id, p_user_id, 'journal.import.completed', 'import_batch', v_batch_id::text,
+    jsonb_build_object('fileName', p_file_name, 'fileSha256', lower(p_file_sha256),
+      'entries', v_rows, 'source', 'csv'));
+
+  return jsonb_build_object('batchId', v_batch_id, 'status', 'completed',
+    'accepted', v_rows, 'rejected', 0);
+end;
+$$;
