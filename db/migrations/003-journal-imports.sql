@@ -146,6 +146,13 @@ begin
       if length(trim(coalesce(v_line->>'account', ''))) = 0 then
         raise exception 'Código de conta obrigatório' using errcode = '22023';
       end if;
+      if trim(v_line->>'account') not in (
+        '1', '1.1', '1.1.01', '1.1.02', '1.1.03', '1.2', '1.2.01',
+        '2', '2.1', '2.1.01', '2.1.02', '2.2', '2.2.01',
+        '3', '3.1', '3.2', '4', '4.1', '5', '5.1', '6', '6.1', '6.2', '6.3', '6.4'
+      ) then
+        raise exception 'Conta inexistente no plano de contas: %', trim(v_line->>'account') using errcode = '22023';
+      end if;
       if (v_line->>'debit')::numeric < 0 or (v_line->>'credit')::numeric < 0 then
         raise exception 'Valores negativos não são permitidos' using errcode = '22023';
       end if;
