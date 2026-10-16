@@ -3,6 +3,100 @@
 -- This file is intentionally committed only to the feature branch.
 -- Do not apply to Production until reviewed and explicitly approved.
 
+-- Company-specific chart of accounts. The import routine validates against this table.
+create table if not exists chart_of_accounts (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies(id) on delete cascade,
+  code text not null check (length(trim(code)) > 0),
+  name text not null check (length(trim(name)) > 0),
+  account_class text not null check (account_class in ('ativo', 'passivo', 'patrimonio', 'receita', 'custo', 'despesa')),
+  nature text not null check (nature in ('devedora', 'credora')),
+  level integer not null check (level > 0),
+  parent_code text,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (company_id, code)
+);
+
+create index if not exists idx_chart_of_accounts_company_active
+  on chart_of_accounts(company_id, active, code);
+
+create or replace function seed_company_chart_of_accounts()
+returns trigger
+language plpgsql
+as $seed$
+begin
+  insert into chart_of_accounts (company_id, code, name, account_class, nature, level, parent_code)
+  values
+    (new.id, '1', 'Ativo', 'ativo', 'devedora', 1, null),
+    (new.id, '1.1', 'Ativo Circulante', 'ativo', 'devedora', 2, '1'),
+    (new.id, '1.1.01', 'Caixa e Bancos', 'ativo', 'devedora', 3, '1.1'),
+    (new.id, '1.1.02', 'Contas a Receber', 'ativo', 'devedora', 3, '1.1'),
+    (new.id, '1.1.03', 'Estoques', 'ativo', 'devedora', 3, '1.1'),
+    (new.id, '1.2', 'Ativo Não Circulante', 'ativo', 'devedora', 2, '1'),
+    (new.id, '1.2.01', 'Imobilizado', 'ativo', 'devedora', 3, '1.2'),
+    (new.id, '2', 'Passivo', 'passivo', 'credora', 1, null),
+    (new.id, '2.1', 'Passivo Circulante', 'passivo', 'credora', 2, '2'),
+    (new.id, '2.1.01', 'Fornecedores', 'passivo', 'credora', 3, '2.1'),
+    (new.id, '2.1.02', 'Obrigações e Tributos', 'passivo', 'credora', 3, '2.1'),
+    (new.id, '2.2', 'Passivo Não Circulante', 'passivo', 'credora', 2, '2'),
+    (new.id, '2.2.01', 'Empréstimos e Financiamentos', 'passivo', 'credora', 3, '2.2'),
+    (new.id, '3', 'Patrimônio Líquido', 'patrimonio', 'credora', 1, null),
+    (new.id, '3.1', 'Capital Social', 'patrimonio', 'credora', 2, '3'),
+    (new.id, '3.2', 'Lucros/Prejuízos Acumulados', 'patrimonio', 'credora', 2, '3'),
+    (new.id, '4', 'Receitas', 'receita', 'credora', 1, null),
+    (new.id, '4.1', 'Receita de Vendas', 'receita', 'credora', 2, '4'),
+    (new.id, '5', 'Custos', 'custo', 'devedora', 1, null),
+    (new.id, '5.1', 'Custo dos Produtos/Serviços', 'custo', 'devedora', 2, '5'),
+    (new.id, '6', 'Despesas', 'despesa', 'devedora', 1, null),
+    (new.id, '6.1', 'Despesas Operacionais', 'despesa', 'devedora', 2, '6'),
+    (new.id, '6.2', 'Despesas Financeiras', 'despesa', 'devedora', 2, '6'),
+    (new.id, '6.3', 'Impostos sobre o Resultado', 'despesa', 'devedora', 2, '6'),
+    (new.id, '6.4', 'Depreciação', 'despesa', 'devedora', 2, '6')
+  on conflict (company_id, code) do nothing;
+  return new;
+end;
+$seed$;
+
+drop trigger if exists trg_seed_company_chart_of_accounts on companies;
+create trigger trg_seed_company_chart_of_accounts
+after insert on companies
+for each row execute function seed_company_chart_of_accounts();
+
+-- Seed the companies that already exist when this migration is applied.
+insert into chart_of_accounts (company_id, code, name, account_class, nature, level, parent_code)
+select c.id, a.code, a.name, a.account_class, a.nature, a.level, a.parent_code
+from companies c
+cross join (values
+  ('1', 'Ativo', 'ativo', 'devedora', 1, null),
+  ('1.1', 'Ativo Circulante', 'ativo', 'devedora', 2, '1'),
+  ('1.1.01', 'Caixa e Bancos', 'ativo', 'devedora', 3, '1.1'),
+  ('1.1.02', 'Contas a Receber', 'ativo', 'devedora', 3, '1.1'),
+  ('1.1.03', 'Estoques', 'ativo', 'devedora', 3, '1.1'),
+  ('1.2', 'Ativo Não Circulante', 'ativo', 'devedora', 2, '1'),
+  ('1.2.01', 'Imobilizado', 'ativo', 'devedora', 3, '1.2'),
+  ('2', 'Passivo', 'passivo', 'credora', 1, null),
+  ('2.1', 'Passivo Circulante', 'passivo', 'credora', 2, '2'),
+  ('2.1.01', 'Fornecedores', 'passivo', 'credora', 3, '2.1'),
+  ('2.1.02', 'Obrigações e Tributos', 'passivo', 'credora', 3, '2.1'),
+  ('2.2', 'Passivo Não Circulante', 'passivo', 'credora', 2, '2'),
+  ('2.2.01', 'Empréstimos e Financiamentos', 'passivo', 'credora', 3, '2.2'),
+  ('3', 'Patrimônio Líquido', 'patrimonio', 'credora', 1, null),
+  ('3.1', 'Capital Social', 'patrimonio', 'credora', 2, '3'),
+  ('3.2', 'Lucros/Prejuízos Acumulados', 'patrimonio', 'credora', 2, '3'),
+  ('4', 'Receitas', 'receita', 'credora', 1, null),
+  ('4.1', 'Receita de Vendas', 'receita', 'credora', 2, '4'),
+  ('5', 'Custos', 'custo', 'devedora', 1, null),
+  ('5.1', 'Custo dos Produtos/Serviços', 'custo', 'devedora', 2, '5'),
+  ('6', 'Despesas', 'despesa', 'devedora', 1, null),
+  ('6.1', 'Despesas Operacionais', 'despesa', 'devedora', 2, '6'),
+  ('6.2', 'Despesas Financeiras', 'despesa', 'devedora', 2, '6'),
+  ('6.3', 'Impostos sobre o Resultado', 'despesa', 'devedora', 2, '6'),
+  ('6.4', 'Depreciação', 'despesa', 'devedora', 2, '6')
+) as a(code, name, account_class, nature, level, parent_code)
+on conflict (company_id, code) do nothing;
+
 create table if not exists import_batches (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references companies(id) on delete restrict,
@@ -146,12 +240,14 @@ begin
       if length(trim(coalesce(v_line->>'account', ''))) = 0 then
         raise exception 'Código de conta obrigatório' using errcode = '22023';
       end if;
-      if trim(v_line->>'account') not in (
-        '1', '1.1', '1.1.01', '1.1.02', '1.1.03', '1.2', '1.2.01',
-        '2', '2.1', '2.1.01', '2.1.02', '2.2', '2.2.01',
-        '3', '3.1', '3.2', '4', '4.1', '5', '5.1', '6', '6.1', '6.2', '6.3', '6.4'
+      if not exists (
+        select 1
+          from chart_of_accounts coa
+         where coa.company_id = p_company_id
+           and coa.code = trim(v_line->>'account')
+           and coa.active = true
       ) then
-        raise exception 'Conta inexistente no plano de contas: %', trim(v_line->>'account') using errcode = '22023';
+        raise exception 'Conta inexistente ou inativa no plano de contas da empresa: %', trim(v_line->>'account') using errcode = '22023';
       end if;
       if (v_line->>'debit')::numeric < 0 or (v_line->>'credit')::numeric < 0 then
         raise exception 'Valores negativos não são permitidos' using errcode = '22023';
