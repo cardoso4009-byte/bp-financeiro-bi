@@ -6,12 +6,6 @@ import { getDatabaseUrl, isDatabaseConfigured } from '@/lib/db'
 
 export const runtime = 'nodejs'
 
-const ACCOUNT_CODES = new Set([
-  '1', '1.1', '1.1.01', '1.1.02', '1.1.03', '1.2', '1.2.01',
-  '2', '2.1', '2.1.01', '2.1.02', '2.2', '2.2.01',
-  '3', '3.1', '3.2', '4', '4.1', '5', '5.1', '6', '6.1', '6.2', '6.3', '6.4',
-])
-
 type ImportLine = { account: string; debit: number; credit: number }
 type ImportEntry = {
   id: string
@@ -179,7 +173,7 @@ function validateEntries(entries: unknown): entries is ImportEntry[] {
     let debitCents = 0
     let creditCents = 0
     for (const line of entry.lines) {
-      if (!line || typeof line.account !== 'string' || !ACCOUNT_CODES.has(line.account.trim())) return false
+      if (!line || typeof line.account !== 'string' || !line.account.trim() || line.account.length > 64) return false
       if (!Number.isFinite(line.debit) || !Number.isFinite(line.credit) || line.debit < 0 || line.credit < 0) return false
       if (line.debit > 0 && line.credit > 0) return false
       if (line.debit === 0 && line.credit === 0) return false
@@ -288,6 +282,7 @@ export async function POST(request: Request) {
       return jsonError('Importação rejeitada: um ou mais IDs de lançamento já existem para esta empresa.', 409)
     }
     if (message.includes('balanceado') || message.includes('inválid') ||
+        message.includes('Conta inexistente') || message.includes('plano de contas') ||
         message.includes('obrigatório') || message.includes('duplicidade') ||
         message.includes('Quantidade') || message.includes('Valores negativos') ||
         message.includes('partida precisa') || message.includes('idempotência')) {
