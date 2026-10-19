@@ -66,6 +66,9 @@ export default function RazaoImportacaoPreview({ existingEntries }: Props) {
   const [entries, setEntries] = useState<PreviewEntry[]>([])
   const [fileError, setFileError] = useState('')
   const [loaded, setLoaded] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [fileContentForImport, setFileContentForImport] = useState('')
 
   const summary = useMemo(() => ({
     total: entries.length,
@@ -79,6 +82,7 @@ export default function RazaoImportacaoPreview({ existingEntries }: Props) {
     setEntries([])
     setLoaded(false)
     setFileName('')
+    setImportMessage(null)
     if (!file) return
     if (!file.name.toLocaleLowerCase().endsWith('.csv')) {
       setFileError('Nesta primeira etapa, selecione um arquivo CSV. A leitura de Excel será habilitada na próxima etapa.')
@@ -88,7 +92,8 @@ export default function RazaoImportacaoPreview({ existingEntries }: Props) {
       setFileError('O arquivo ultrapassa o limite de 5 MB.')
       return
     }
-    const rows = parseCsv(await file.text())
+    const rawContent = await file.text()
+    const rows = parseCsv(rawContent)
     if (rows.length < 2) {
       setFileError('O CSV precisa ter uma linha de cabeçalho e ao menos uma partida.')
       return
@@ -168,9 +173,33 @@ export default function RazaoImportacaoPreview({ existingEntries }: Props) {
       previews.push({ entry, rowNumbers: lines.map(line => line.row), errors: [...new Set(errors)], duplicate })
     }
     setFileName(file.name)
+    setFileContentForImport(rawContent)
     setEntries(previews)
     setLoaded(true)
     if (parseErrors.length) setFileError(parseErrors.slice(0, 8).join('\n') + (parseErrors.length > 8 ? `\nE mais ${parseErrors.length - 8} erro(s) de linha.` : ''))
+  }
+
+  async function importEntries() {
+    if (!fileContentForImport || !fileName || summary.valid < 1 || summary.invalid > 0 || summary.duplicates > 0 || submitting) return
+    const confirmed = window.confirm(`Confirma o envio de ${summary.valid} lançamento(s) do arquivo "${fileName}"? Esta ação pode gravar dados na empresa selecionada.`)
+    if (!confirmed) return
+    setSubmitting(true)
+    setImportMessage(null)
+    try {
+      const response = await fetch('/api/contabilidade/importar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ fileName, fileContent: fileContentForImport, idempotencyKey: window.crypto.randomUUID() }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(typeof result.error === 'string' ? result.error : `Falha na importação (HTTP ${response.status}).`)
+      setImportMessage({ type: 'success', text: 'O servidor aceitou a importação. Confira o resultado retornado antes de continuar.' })
+    } catch (error) {
+      setImportMessage({ type: 'error', text: error instanceof Error ? error.message : 'Não foi possível concluir a importação.' })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   function downloadTemplate() {
@@ -227,7 +256,13 @@ export default function RazaoImportacaoPreview({ existingEntries }: Props) {
           </table>
         </div>
         {entries.length > 50 && <p style={{ color: '#66758a', fontSize: 12 }}>Exibindo os primeiros 50 de {entries.length} lançamentos.</p>}
-        <div className="note" style={{ marginTop: 12 }}>Esta é somente uma prévia local. Nenhuma partida foi gravada nem enviada ao Neon. A importação definitiva só será habilitada depois de implementar persistência segura e transacional.</div>
+        {importMessage && <div role={importMessage.type === 'error' ? 'alert' : 'status'} className="note" style={{ marginTop: 12, color: importMessage.type === 'error' ? '#a32626' : '#18794e', whiteSpace: 'pre-wrap' }}>{importMessage.text}</div>}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
+          <button type="button" style={{ ...button, opacity: (!loaded || summary.valid < 1 || summary.invalid > 0 || summary.duplicates > 0 || submitting) ? 0.55 : 1 }} disabled={!loaded || summary.valid < 1 || summary.invalid > 0 || summary.duplicates > 0 || submitting} onClick={() => void importEntries()}>
+            {submitting ? 'Importando...' : 'Importar lançamentos'}
+          </button>
+        </div>
+        <div className="note" style={{ marginTop: 12 }}>A importação envia os dados ao servidor e pode gravar lançamentos. Use somente no Preview após validar o ambiente de teste. Arquivos com erros ou duplicidades ficam bloqueados.</div>
       </>}
     </section>
   )
