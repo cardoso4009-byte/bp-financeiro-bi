@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { chartOfAccounts, sampleJournal, type JournalEntry } from '@/lib/accounting-core'
+import { chartOfAccounts, type Account, type JournalEntry } from '@/lib/accounting-core'
 import { journalFromLocalStorage } from '@/lib/financial-accounting-integration'
 import { buildLedger } from '@/lib/ledger-engine'
 import ReportPeriodFilter, { type ReportPeriod } from '@/components/report-period-filter'
@@ -13,20 +13,35 @@ const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', curren
 const inputStyle: React.CSSProperties = { width: '100%', minWidth: 0, padding: '10px 12px', border: '1px solid #d6deea', borderRadius: 8, background: '#fff', color: '#17345f', font: 'inherit' }
 
 export default function RazaoPage() {
-  const [journal, setJournal] = useState<JournalEntry[]>(sampleJournal)
+  const [journal, setJournal] = useState<JournalEntry[]>([])
+  const [accounts, setAccounts] = useState<Account[]>(chartOfAccounts)
   const [integrated, setIntegrated] = useState(false)
+  const [loadingJournal, setLoadingJournal] = useState(true)
+  const [journalError, setJournalError] = useState('')
+  const refreshJournal = useCallback(async () => {
+    setLoadingJournal(true)
+    setJournalError('')
+    try {
+      const response = await fetch('/api/contabilidade/razao', { method: 'GET', credentials: 'same-origin', cache: 'no-store' })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(typeof result.error === 'string' ? result.error : `Falha ao consultar o Razão (HTTP ${response.status}).`)
+      setJournal(Array.isArray(result.entries) ? result.entries as JournalEntry[] : [])
+      if (Array.isArray(result.accounts) && result.accounts.length) setAccounts(result.accounts as Account[])
+      setIntegrated(true)
+    } catch (error) {
+      setJournal([])
+      setIntegrated(false)
+      setJournalError(error instanceof Error ? error.message : 'Não foi possível carregar os lançamentos do banco.')
+    } finally {
+      setLoadingJournal(false)
+    }
+  }, [])
   const [period, setPeriod] = useState<ReportPeriod>({ year: 2026, month: 12, view: 'mensal' })
   const [search, setSearch] = useState('')
   const [accountClass, setAccountClass] = useState('todas')
   const [sourceFilter, setSourceFilter] = useState('todas')
 
-  useEffect(() => {
-    const result = journalFromLocalStorage()
-    if (result.entries.length) {
-      setJournal(result.entries)
-      setIntegrated(true)
-    }
-  }, [])
+  useEffect(() => { void refreshJournal() }, [refreshJournal])
 
   const scopedJournal = useMemo(() => {
     const key = (entry: JournalEntry) => entry.competence || entry.date.slice(0, 7)
@@ -38,7 +53,7 @@ export default function RazaoPage() {
     return [...opening, ...journal.filter(entry => keys.has(key(entry)))]
   }, [journal, period])
 
-  const ledger = useMemo(() => buildLedger(scopedJournal, chartOfAccounts), [scopedJournal])
+  const ledger = useMemo(() => buildLedger(scopedJournal, accounts), [scopedJournal, accounts])
   const filteredLedger = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase('pt-BR')
     return ledger.map(item => {
@@ -87,7 +102,10 @@ export default function RazaoPage() {
         <div className="card"><span>Status</span><strong>{balanced ? '✓ OK' : '! Revisar'}</strong><small>{balanced ? 'Razão balanceado' : 'Diferença entre débitos e créditos'}</small></div>
       </div>
 
-      <RazaoImportacaoPreview existingEntries={journal} />
+      {loadingJournal && <div className="note" role="status">Consultando lançamentos no banco de dados...</div>}
+      {journalError && <div className="note" role="alert" style={{ color: '#a32626' }}>{journalError} Atualize a página ou verifique sua sessão e permissão.</div>}
+      {!loadingJournal && !journalError && journal.length === 0 && <div className="note">Nenhum lançamento encontrado no banco para esta empresa.</div>}
+      <RazaoImportacaoPreview existingEntries={journal} onImported={refreshJournal} />
 
       <section className="panel wide">
         <div className="panel-title"><h2>Consulta detalhada</h2><span>{filteredLedger.reduce((sum, item) => sum + item.movements.length, 0)} partidas encontradas</span></div>
