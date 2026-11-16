@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { chartOfAccounts, type Account, type JournalEntry } from '@/lib/accounting-core'
-import { journalFromLocalStorage } from '@/lib/financial-accounting-integration'
 import { buildLedger } from '@/lib/ledger-engine'
 import ReportPeriodFilter, { type ReportPeriod } from '@/components/report-period-filter'
 import RazaoImportacaoPreview from './importacao-preview'
