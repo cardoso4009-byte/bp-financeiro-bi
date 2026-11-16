@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { chartOfAccounts, validateJournalEntry, type JournalEntry } from '@/lib/accounting-core'
 
-type Props = { existingEntries: JournalEntry[] }
+type Props = { existingEntries: JournalEntry[]; onImported?: () => Promise<void> | void }
 
 type ParsedLine = { row: number; entryId: string; date: string; description: string; account: string; debit: number; credit: number; document?: string; competence?: string; costCenter?: string }
 type PreviewEntry = { entry: JournalEntry; rowNumbers: number[]; errors: string[]; duplicate: boolean }
@@ -60,7 +60,7 @@ function canonical(entry: JournalEntry) {
   })
 }
 
-export default function RazaoImportacaoPreview({ existingEntries }: Props) {
+export default function RazaoImportacaoPreview({ existingEntries, onImported }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [fileName, setFileName] = useState('')
   const [entries, setEntries] = useState<PreviewEntry[]>([])
@@ -194,7 +194,8 @@ export default function RazaoImportacaoPreview({ existingEntries }: Props) {
       })
       const result = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(typeof result.error === 'string' ? result.error : `Falha na importação (HTTP ${response.status}).`)
-      setImportMessage({ type: 'success', text: 'O servidor aceitou a importação. Confira o resultado retornado antes de continuar.' })
+      setImportMessage({ type: 'success', text: 'Importação concluída. O Razão foi atualizado com os dados confirmados pelo servidor.' })
+      await onImported?.()
     } catch (error) {
       setImportMessage({ type: 'error', text: error instanceof Error ? error.message : 'Não foi possível concluir a importação.' })
     } finally {
