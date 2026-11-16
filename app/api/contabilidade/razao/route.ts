@@ -50,34 +50,40 @@ export async function GET(request: Request) {
     `
     if (!access.length) return error('Usuário sem sessão ativa ou permissão de leitura financeira nesta empresa.', 403)
 
-    const rows = await sql`
-      select
-        je.id as "entryId",
-        je.external_id as "externalId",
-        je.entry_date::text as date,
-        to_char(je.competence, 'YYYY-MM') as competence,
-        je.description,
-        je.document,
-        je.cost_center as "costCenter",
-        je.source,
-        jl.line_number as "lineNumber",
-        jl.account_code as "accountCode",
-        jl.debit::text as debit,
-        jl.credit::text as credit,
-        coa.name as "accountName",
-        coa.account_class as "accountClass",
-        coa.nature as "accountNature",
-        coa.level as "accountLevel",
-        coa.parent_code as "parentCode",
-        coa.active as "accountActive"
-      from journal_entries je
-      join journal_lines jl on jl.entry_id = je.id
-      join chart_of_accounts coa
-        on coa.company_id = je.company_id
-       and coa.code = jl.account_code
-      where je.company_id = ${session.companyId}::uuid
-      order by je.entry_date asc, je.created_at asc, je.id asc, jl.line_number asc
-    `
+    const [rows, accountRows] = await Promise.all([
+      sql`
+        select
+          je.id as "entryId",
+          je.external_id as "externalId",
+          je.entry_date::text as date,
+          to_char(je.competence, 'YYYY-MM') as competence,
+          je.description,
+          je.document,
+          je.cost_center as "costCenter",
+          je.source,
+          jl.line_number as "lineNumber",
+          jl.account_code as "accountCode",
+          jl.debit::text as debit,
+          jl.credit::text as credit
+        from journal_entries je
+        join journal_lines jl on jl.entry_id = je.id
+        where je.company_id = ${session.companyId}::uuid
+        order by je.entry_date asc, je.created_at asc, je.id asc, jl.line_number asc
+      `,
+      sql`
+        select
+          code,
+          name,
+          account_class as class,
+          nature,
+          level,
+          active,
+          parent_code as "parentCode"
+        from chart_of_accounts
+        where company_id = ${session.companyId}::uuid
+        order by code asc
+      `,
+    ])
 
     const entriesMap = new Map<string, {
       id: string; date: string; competence?: string; description: string;
@@ -88,6 +94,19 @@ export async function GET(request: Request) {
       code: string; name: string; class: string; nature: string;
       level: number; active: boolean; parentCode?: string
     }>()
+
+    for (const row of accountRows as Array<Record<string, unknown>>) {
+      const code = String(row.code)
+      accountsMap.set(code, {
+        code,
+        name: String(row.name),
+        class: String(row.class),
+        nature: String(row.nature),
+        level: Number(row.level),
+        active: Boolean(row.active),
+        parentCode: row.parentCode ? String(row.parentCode) : undefined,
+      })
+    }
 
     for (const row of rows as Array<Record<string, unknown>>) {
       const entryId = String(row.entryId)
@@ -110,18 +129,6 @@ export async function GET(request: Request) {
         debit: Number(row.debit ?? 0),
         credit: Number(row.credit ?? 0),
       })
-      const code = String(row.accountCode)
-      if (!accountsMap.has(code)) {
-        accountsMap.set(code, {
-          code,
-          name: String(row.accountName),
-          class: String(row.accountClass),
-          nature: String(row.accountNature),
-          level: Number(row.accountLevel),
-          active: Boolean(row.accountActive),
-          parentCode: row.parentCode ? String(row.parentCode) : undefined,
-        })
-      }
     }
 
     return NextResponse.json({
