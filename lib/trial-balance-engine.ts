@@ -142,7 +142,7 @@ export function buildTrialBalance(
       debit: fromCents(totalDebit),
       credit: fromCents(totalCredit),
       difference: fromCents(difference),
-      balanced: Math.abs(difference) <= 1,
+      balanced: Math.abs(difference) < 0.01,
     },
     period: { start: startCompetence, end: endCompetence },
   }
