@@ -1,58 +1,149 @@
-import { Account, JournalEntry, chartOfAccounts } from './accounting-core'
+import type { Account, JournalEntry } from './accounting-core'
 
 export type TrialBalanceRow = {
-  code: string
-  name: string
-  class: Account['class']
-  nature: Account['nature']
+  account: Account
+  openingDebit: number
+  openingCredit: number
+  openingBalance: number
   debit: number
   credit: number
-  balance: number
+  closingBalance: number
 }
 
-export type TrialBalance = {
+export type TrialBalanceResult = {
   rows: TrialBalanceRow[]
-  totalDebit: number
-  totalCredit: number
-  difference: number
-  balanced: boolean
-  errors: string[]
+  totals: {
+    openingDebit: number
+    openingCredit: number
+    debit: number
+    credit: number
+    difference: number
+    balanced: boolean
+  }
+  period: { start: string; end: string }
 }
 
-export function buildTrialBalance(entries: JournalEntry[], accounts: Account[] = chartOfAccounts): TrialBalance {
-  const errors: string[] = []
-  const totals = new Map<string, { debit: number; credit: number }>()
-  for (const account of accounts) totals.set(account.code, { debit: 0, credit: 0 })
+const toCents = (value: number) => Math.round((Number(value) || 0) * 100)
+const fromCents = (value: number) => value / 100
+const competenceOf = (entry: JournalEntry) => entry.competence || entry.date.slice(0, 7)
+const validCompetence = (value: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(value)
+
+type MutableBalance = {
+  openingDebit: number
+  openingCredit: number
+  debit: number
+  credit: number
+}
+
+function addToAccountAndParents(
+  balances: Map<string, MutableBalance>,
+  accountByCode: Map<string, Account>,
+  accountCode: string,
+  field: keyof MutableBalance,
+  cents: number,
+) {
+  let current: Account | undefined = accountByCode.get(accountCode)
+  const visited = new Set<string>()
+
+  while (current) {
+    if (visited.has(current.code)) throw new Error(`Hierarquia circular no plano de contas: ${current.code}.`)
+    visited.add(current.code)
+
+    const balance = balances.get(current.code)
+    if (!balance) throw new Error(`Saldo não inicializado para a conta ${current.code}.`)
+    balance[field] += cents
+    if (current.parentCode && !accountByCode.has(current.parentCode)) {\n      throw new Error(`Conta-pai ${current.parentCode} não encontrada para ${current.code}.`)\n    }\n    current = current.parentCode ? accountByCode.get(current.parentCode) : undefined
+  }
+}
+
+export function buildTrialBalance(
+  entries: JournalEntry[],
+  accounts: Account[],
+  startCompetence: string,
+  endCompetence: string = startCompetence,
+): TrialBalanceResult {
+  if (!validCompetence(startCompetence) || !validCompetence(endCompetence)) {
+    throw new Error('Informe competências válidas no formato AAAA-MM.')
+  }
+  if (startCompetence > endCompetence) {
+    throw new Error('A competência inicial não pode ser posterior à competência final.')
+  }
+
+  const accountByCode = new Map(accounts.map(account => [account.code, account]))
+  const balances = new Map<string, MutableBalance>()
+  for (const account of accounts) {
+    balances.set(account.code, { openingDebit: 0, openingCredit: 0, debit: 0, credit: 0 })
+  }
+
+  let totalOpeningDebit = 0
+  let totalOpeningCredit = 0
+  let totalDebit = 0
+  let totalCredit = 0
 
   for (const entry of entries) {
-    const entryErrors = entry.lines.length < 2 ? [`${entry.id}: lançamento deve possuir ao menos duas partidas.`] : []
-    const entryDebit = entry.lines.reduce((sum, line) => sum + Number(line.debit || 0), 0)
-    const entryCredit = entry.lines.reduce((sum, line) => sum + Number(line.credit || 0), 0)
-    if (Math.abs(entryDebit - entryCredit) >= 0.01) entryErrors.push(`${entry.id}: débito e crédito não estão balanceados.`)
-    errors.push(...entryErrors)
+    const competence = competenceOf(entry)
+    if (!validCompetence(competence)) throw new Error(`Competência inválida no lançamento ${entry.id}.`)
+
+    const isOpening = competence < startCompetence
+    const isInPeriod = competence >= startCompetence && competence <= endCompetence
+    if (!isOpening && !isInPeriod) continue
 
     for (const line of entry.lines) {
-      const account = totals.get(line.account)
-      if (!account) {
-        errors.push(`${entry.id}: conta inexistente: ${line.account}.`)
-        continue
+      if (!accountByCode.has(line.account)) {
+        throw new Error(`A conta ${line.account} do lançamento ${entry.id} não existe no plano de contas.`)
       }
-      if (line.debit < 0 || line.credit < 0) errors.push(`${entry.id}: valor negativo na conta ${line.account}.`)
-      account.debit += Number(line.debit || 0)
-      account.credit += Number(line.credit || 0)
+
+      const debit = toCents(line.debit)
+      const credit = toCents(line.credit)
+      if (debit < 0 || credit < 0) throw new Error(`Valor negativo no lançamento ${entry.id}, conta ${line.account}.`)
+
+      if (isOpening) {
+        addToAccountAndParents(balances, accountByCode, line.account, 'openingDebit', debit)
+        addToAccountAndParents(balances, accountByCode, line.account, 'openingCredit', credit)
+        totalOpeningDebit += debit
+        totalOpeningCredit += credit
+      } else {
+        addToAccountAndParents(balances, accountByCode, line.account, 'debit', debit)
+        addToAccountAndParents(balances, accountByCode, line.account, 'credit', credit)
+        totalDebit += debit
+        totalCredit += credit
+      }
     }
   }
 
   const rows = accounts
-    .filter(account => account.active !== false)
     .map(account => {
-      const value = totals.get(account.code) ?? { debit: 0, credit: 0 }
-      const balance = account.nature === 'devedora' ? value.debit - value.credit : value.credit - value.debit
-      return { code: account.code, name: account.name, class: account.class, nature: account.nature, debit: value.debit, credit: value.credit, balance }
-    })
+      const value = balances.get(account.code)!
+      const openingNet = account.nature === 'devedora'
+        ? value.openingDebit - value.openingCredit
+        : value.openingCredit - value.openingDebit
+      const movementNet = account.nature === 'devedora'
+        ? value.debit - value.credit
+        : value.credit - value.debit
 
-  const totalDebit = rows.reduce((sum, row) => sum + row.debit, 0)
-  const totalCredit = rows.reduce((sum, row) => sum + row.credit, 0)
+      return {
+        account,
+        openingDebit: fromCents(value.openingDebit),
+        openingCredit: fromCents(value.openingCredit),
+        openingBalance: fromCents(openingNet),
+        debit: fromCents(value.debit),
+        credit: fromCents(value.credit),
+        closingBalance: fromCents(openingNet + movementNet),
+      }
+    })
+    .sort((a, b) => a.account.code.localeCompare(b.account.code, undefined, { numeric: true }))
+
   const difference = totalDebit - totalCredit
-  return { rows, totalDebit, totalCredit, difference, balanced: Math.abs(difference) < 0.01 && errors.length === 0, errors }
+  return {
+    rows,
+    totals: {
+      openingDebit: fromCents(totalOpeningDebit),
+      openingCredit: fromCents(totalOpeningCredit),
+      debit: fromCents(totalDebit),
+      credit: fromCents(totalCredit),
+      difference: fromCents(difference),
+      balanced: Math.abs(difference) < 0.01,
+    },
+    period: { start: startCompetence, end: endCompetence },
+  }
 }
