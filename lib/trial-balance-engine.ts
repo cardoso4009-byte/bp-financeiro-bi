@@ -26,7 +26,7 @@ export type TrialBalanceResult = {
 const toCents = (value: number) => Math.round((Number(value) || 0) * 100)
 const fromCents = (value: number) => value / 100
 const competenceOf = (entry: JournalEntry) => entry.competence || entry.date.slice(0, 7)
-const validCompetence = (value: string) => /^\\d{4}-(0[1-9]|1[0-2])$/.test(value)
+const validCompetence = (value: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(value)
 
 type MutableBalance = {
   openingDebit: number
@@ -52,7 +52,7 @@ function addToAccountAndParents(
     const balance = balances.get(current.code)
     if (!balance) throw new Error(`Saldo não inicializado para a conta ${current.code}.`)
     balance[field] += cents
-    current = current.parentCode ? accountByCode.get(current.parentCode) : undefined
+    if (current.parentCode && !accountByCode.has(current.parentCode)) {\n      throw new Error(`Conta-pai ${current.parentCode} não encontrada para ${current.code}.`)\n    }\n    current = current.parentCode ? accountByCode.get(current.parentCode) : undefined
   }
 }
 
